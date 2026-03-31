@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:dio/dio.dart' as dio;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/orders/orders_bloc.dart';
@@ -107,23 +108,31 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       for (final sig in signatures) {
         final pngData = sig['pngUrl'] as String? ?? '';
         final name = sig['signerName'] as String? ?? '';
+        Uint8List? decoded;
 
-        if (pngData.contains('base64,')) {
+        // Load from Cloudinary URL
+        if (pngData.startsWith('http')) {
           try {
-            final decoded = base64Decode(pngData.split('base64,').last);
-            // Validate it's a real PNG
-            if (decoded.length > 50 &&
-                decoded[0] == 0x89 &&
-                decoded[1] == 0x50) {
-              if (sig['signerType'] == 'customer') {
-                clientSig = decoded;
-                clientName = name;
-              } else if (sig['signerType'] == 'technician') {
-                techSig = decoded;
-                techName = name;
-              }
-            }
+            final resp = await _api.dio.get(pngData,
+                options: dio.Options(responseType: dio.ResponseType.bytes));
+            decoded = Uint8List.fromList(resp.data);
           } catch (_) {}
+        }
+        // Load from base64
+        else if (pngData.contains('base64,')) {
+          try {
+            decoded = base64Decode(pngData.split('base64,').last);
+          } catch (_) {}
+        }
+
+        if (decoded != null && decoded.length > 50) {
+          if (sig['signerType'] == 'customer') {
+            clientSig = decoded;
+            clientName = name;
+          } else if (sig['signerType'] == 'technician') {
+            techSig = decoded;
+            techName = name;
+          }
         }
       }
 
@@ -204,6 +213,30 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         ));
       }
     }
+  }
+
+  Widget _brokenImage() => Container(
+    width: 80, height: 80,
+    decoration: BoxDecoration(
+      color: AppTheme.surfaceColor,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: const Icon(Icons.broken_image_rounded, color: AppTheme.textSecondary),
+  );
+
+  void _showFullPhotoUrl(String url) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: GestureDetector(
+          onTap: () => Navigator.pop(ctx),
+          child: InteractiveViewer(
+            child: Image.network(url),
+          ),
+        ),
+      ),
+    );
   }
 
   void _showFullPhoto(Uint8List bytes) {
@@ -876,6 +909,21 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               runSpacing: 8,
               children: _photos.map((p) {
                 final url = p['photoUrl'] as String? ?? '';
+
+                // Cloudinary URL or any http URL
+                if (url.startsWith('http')) {
+                  return GestureDetector(
+                    onTap: () => _showFullPhotoUrl(url),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(url,
+                          width: 80, height: 80, fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _brokenImage()),
+                    ),
+                  );
+                }
+
+                // Base64 fallback
                 if (url.contains('base64,')) {
                   try {
                     final bytes = base64Decode(url.split('base64,').last);
