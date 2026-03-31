@@ -138,8 +138,56 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         }
       }
 
+      // Build full diagnosis with repair notes from history
+      String fullDiagnosis = _order.diagnosis ?? '';
+      try {
+        final histRes = await _api.dio.get('/orders/${_order.id}/history');
+        final hist = histRes.data as List;
+        final excludes = ['control de calidad', 'enviado a control', 'listo para entrega', 'orden cerrada', 'orden creada', 'entregado por'];
+        final repairNotes = hist
+            .where((h) {
+              final status = h['toStatus'] as String? ?? '';
+              final notes = (h['notes'] as String? ?? '').toLowerCase();
+              if (status != 'repairing' && status != 'diagnosing') return false;
+              if (notes.isEmpty) return false;
+              for (final p in excludes) { if (notes.contains(p)) return false; }
+              return true;
+            })
+            .map((h) => h['notes'] as String)
+            .toList();
+        if (repairNotes.isNotEmpty) {
+          if (fullDiagnosis.isNotEmpty && !fullDiagnosis.endsWith('.')) {
+            fullDiagnosis += '.';
+          }
+          fullDiagnosis = '$fullDiagnosis ${repairNotes.join('. ')}.'.trim();
+        }
+      } catch (_) {}
+
+      // Create order copy with full diagnosis
+      final orderForPdf = ServiceOrder(
+        id: _order.id,
+        orderNumber: _order.orderNumber,
+        customerId: _order.customerId,
+        customer: _order.customer,
+        deviceId: _order.deviceId,
+        device: _order.device,
+        technicianId: _order.technicianId,
+        status: _order.status,
+        problemReported: _order.problemReported,
+        diagnosis: fullDiagnosis.isNotEmpty ? fullDiagnosis : null,
+        notes: _order.notes,
+        laborCost: _order.laborCost,
+        subtotal: _order.subtotal,
+        tax: _order.tax,
+        total: _order.total,
+        warrantyDays: _order.warrantyDays,
+        createdAt: _order.createdAt,
+        deliveredAt: _order.deliveredAt,
+        items: _order.items,
+      );
+
       final pdfBytes = await _pdfGenerator.generateDeliveryAct(
-        order: _order,
+        order: orderForPdf,
         tenant: _tenant!,
         clientSignaturePng: clientSig,
         clientName: clientName,
