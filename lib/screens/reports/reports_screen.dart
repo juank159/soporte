@@ -19,13 +19,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Map<String, dynamic>? _staleOrders;
   Map<String, dynamic>? _revenue;
   bool _loading = true;
-  String _revenueFilter = 'month';
-  String _revenueLabel = 'Este mes';
+  String _revenueFilter = 'today';
+  String _revenueLabel = 'Hoy';
   String? _revFrom;
   String? _revTo;
 
   @override
-  void initState() { super.initState(); _setFilter('month'); _load(); }
+  void initState() { super.initState(); _setFilter('today'); _load(); }
 
   String _fmt(DateTime d) => '${d.year}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}';
 
