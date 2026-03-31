@@ -203,6 +203,40 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     }
   }
 
+  bool _validateStep(int step) {
+    String? error;
+    switch (step) {
+      case 0: // Client
+        if (_customerMode == 0 && _selectedCustomer == null) {
+          error = 'Seleccione un cliente';
+        } else if (_customerMode == 1) {
+          if (_newNameCtrl.text.trim().isEmpty) error = 'Ingrese el nombre';
+          else if (_newIdCtrl.text.trim().isEmpty) error = 'Ingrese la cedula';
+          else if (_newPhoneCtrl.text.trim().isEmpty) error = 'Ingrese el telefono';
+        }
+        break;
+      case 1: // Device
+        if (_selectedType == null) error = 'Seleccione el tipo de equipo';
+        else if (_selectedBrand == null) error = 'Seleccione la marca';
+        else if (_deviceModelCtrl.text.trim().isEmpty) error = 'Ingrese el modelo';
+        else if (_deviceSerialCtrl.text.trim().isEmpty) error = 'Ingrese el serial / IMEI';
+        break;
+      case 2: // Photos - optional, always valid
+        break;
+      case 3: // Problem
+        if (_problemCtrl.text.trim().isEmpty) error = 'Describa el problema';
+        break;
+    }
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(error),
+        backgroundColor: AppTheme.accentOrange,
+      ));
+      return false;
+    }
+    return true;
+  }
+
   Future<void> _createOrder() async {
     if (_formKey.currentState?.validate() != true) return;
 
@@ -451,6 +485,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               child: Stepper(
                 currentStep: _currentStep,
                 onStepContinue: () {
+                  if (!_validateStep(_currentStep)) return;
                   if (_currentStep < 3) {
                     setState(() => _currentStep++);
                   } else {

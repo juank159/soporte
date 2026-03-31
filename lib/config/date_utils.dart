@@ -1,11 +1,8 @@
 /// Utilidades de fecha con zona horaria del tenant.
-/// Usa el timezone configurado en el tenant (ej: America/Bogota = UTC-5).
 class AppDateUtils {
-  static Duration _offset = const Duration(hours: -5); // Default: Bogota
+  static Duration _offset = const Duration(hours: -5);
   static String _timezone = 'America/Bogota';
 
-  /// Configure timezone from tenant settings.
-  /// Call this after login or when tenant data loads.
   static void configure(String timezone) {
     _timezone = timezone;
     _offset = _getOffset(timezone);
@@ -13,12 +10,19 @@ class AppDateUtils {
 
   static String get timezone => _timezone;
 
-  /// Convert UTC DateTime to tenant local time
-  static DateTime toLocal(DateTime utcDate) {
-    return utcDate.toUtc().add(_offset);
+  /// Convert a server DateTime (UTC) to tenant local time
+  static DateTime toLocal(DateTime date) {
+    // Server always sends UTC timestamps
+    // If the DateTime was parsed without 'Z', it might be treated as local
+    // Force it to UTC first, then apply offset
+    final utc = date.isUtc ? date : DateTime.utc(
+      date.year, date.month, date.day,
+      date.hour, date.minute, date.second, date.millisecond,
+    );
+    return utc.add(_offset);
   }
 
-  /// Format a DateTime (assumed UTC from server) to tenant local string
+  /// Format a DateTime from server to tenant local string
   static String format(DateTime? date, {bool includeTime = true}) {
     if (date == null) return '-';
     final local = toLocal(date);
@@ -26,22 +30,25 @@ class AppDateUtils {
         '${local.month.toString().padLeft(2, '0')}/'
         '${local.year}';
     if (!includeTime) return d;
-    return '$d ${local.hour.toString().padLeft(2, '0')}:'
-        '${local.minute.toString().padLeft(2, '0')}';
+    final h = local.hour;
+    final m = local.minute.toString().padLeft(2, '0');
+    final ampm = h >= 12 ? 'PM' : 'AM';
+    final h12 = h == 0 ? 12 : h > 12 ? h - 12 : h;
+    return '$d $h12:$m $ampm';
   }
 
-  /// Format date only
   static String formatDate(DateTime? date) => format(date, includeTime: false);
 
-  /// Format time only
   static String formatTime(DateTime? date) {
     if (date == null) return '-';
     final local = toLocal(date);
-    return '${local.hour.toString().padLeft(2, '0')}:'
-        '${local.minute.toString().padLeft(2, '0')}';
+    final h = local.hour;
+    final m = local.minute.toString().padLeft(2, '0');
+    final ampm = h >= 12 ? 'PM' : 'AM';
+    final h12 = h == 0 ? 12 : h > 12 ? h - 12 : h;
+    return '$h12:$m $ampm';
   }
 
-  /// Get UTC offset for common Colombian/Latin American timezones
   static Duration _getOffset(String tz) {
     final offsets = {
       'America/Bogota': const Duration(hours: -5),

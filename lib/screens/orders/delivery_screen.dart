@@ -391,9 +391,17 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                 TextField(
                   controller: _clientNameCtrl,
                   style: const TextStyle(color: AppTheme.textPrimary),
-                  decoration: const InputDecoration(
+                  readOnly: widget.order.customer?.fullName != null &&
+                      widget.order.customer!.fullName.isNotEmpty &&
+                      widget.order.customer!.idNumber != 'EXPRESS',
+                  decoration: InputDecoration(
                     labelText: 'Nombre de quien recibe',
-                    prefixIcon: Icon(Icons.badge_rounded),
+                    prefixIcon: const Icon(Icons.badge_rounded),
+                    suffixIcon: widget.order.customer?.fullName != null &&
+                        widget.order.customer!.idNumber != 'EXPRESS'
+                        ? const Icon(Icons.lock_rounded,
+                            size: 16, color: AppTheme.textSecondary)
+                        : null,
                   ),
                 ),
                 const SizedBox(height: 16),
