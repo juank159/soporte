@@ -14,6 +14,7 @@ import '../../services/api_service.dart';
 import '../../services/ticket_printer_service.dart';
 import '../../services/pdf_generator_service.dart';
 import '../../widgets/glass_card.dart';
+import '../../widgets/ticket_preview_widget.dart';
 import '../dashboard/dashboard_screen.dart';
 import 'delivery_screen.dart';
 import 'package:printing/printing.dart' as printing_lib;
@@ -69,29 +70,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       return;
     }
 
-    final hasPrinter = await _printerService.hasSavedPrinter;
-
-    if (!hasPrinter) {
-      // No printer saved - use OS print dialog
-      final pdfBytes = await _printerService.generateTicketPdf(_order, _tenant!);
-      await printing_lib.Printing.layoutPdf(
-        onLayout: (_) async => pdfBytes,
-        name: 'Ticket_${_order.orderNumber}',
-      );
-      return;
-    }
-
-    // Try to print via saved printer (auto-reconnects internally)
-    final ok = await _printerService.printReceptionTicket(
-      order: _order,
-      tenant: _tenant!,
-    );
-
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(ok ? 'Ticket impreso' : 'Error al imprimir. Verifique la impresora.'),
-        backgroundColor: ok ? AppTheme.accentGreen : AppTheme.accentRed,
-      ));
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => _TicketPreviewScreen(
+            order: _order,
+            tenant: _tenant!,
+            printerService: _printerService,
+          ),
+        ),
+      );
     }
   }
 
@@ -1181,6 +1170,88 @@ class _ActaPreviewScreen extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Pantalla de previsualización del ticket con opción de imprimir.
+class _TicketPreviewScreen extends StatelessWidget {
+  final ServiceOrder order;
+  final Tenant tenant;
+  final TicketPrinterService printerService;
+
+  const _TicketPreviewScreen({
+    required this.order,
+    required this.tenant,
+    required this.printerService,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Ticket ${order.orderNumber}'),
+      ),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: AppTheme.gradientPrimary,
+          ),
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              // Print button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    final ok = await printerService.printReceptionTicket(
+                      order: order,
+                      tenant: tenant,
+                    );
+                    if (context.mounted) {
+                      if (ok) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Ticket impreso'),
+                            backgroundColor: AppTheme.accentGreen,
+                          ),
+                        );
+                      } else {
+                        // Fallback: open system print dialog
+                        final pdfBytes = await printerService
+                            .generateTicketPdf(order, tenant);
+                        await printing_lib.Printing.sharePdf(
+                          bytes: pdfBytes,
+                          filename: 'Ticket_${order.orderNumber}.pdf',
+                        );
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.print_rounded),
+                  label: const Text('Imprimir ticket'),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Preview
+              Center(
+                child: TicketPreviewWidget(
+                  order: order,
+                  tenant: tenant,
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );

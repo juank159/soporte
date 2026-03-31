@@ -281,9 +281,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         deviceBrand: _selectedBrand?.name ?? '',
         deviceModel: _deviceModelCtrl.text.trim(),
         problemReported: _problemCtrl.text.trim(),
-        deviceSerial: _deviceSerialCtrl.text.trim().isNotEmpty
-            ? _deviceSerialCtrl.text.trim()
-            : null,
+        deviceSerial: _deviceSerialCtrl.text.trim(),
         deviceColor: _deviceColorCtrl.text.trim().isNotEmpty
             ? _deviceColorCtrl.text.trim()
             : null,
@@ -754,7 +752,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         ],
 
         _field(_deviceModelCtrl, 'Modelo *', required: true),
-        _field(_deviceSerialCtrl, 'Serial / IMEI (opcional)'),
+        _field(_deviceSerialCtrl, 'Serial / IMEI *', required: true),
         _field(_deviceColorCtrl, 'Color (opcional)'),
         _field(
           _accessoriesCtrl,
