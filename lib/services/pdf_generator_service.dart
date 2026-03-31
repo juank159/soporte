@@ -4,6 +4,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../models/service_order.dart';
 import '../models/tenant.dart';
+import '../config/date_utils.dart';
 
 /// Genera el PDF del Acta de Entrega de Servicio Tecnico.
 /// Formato tipo carta basado en el modelo del cliente.
@@ -23,8 +24,7 @@ class PdfGeneratorService {
     );
 
     final now = deliveryDate ?? DateTime.now();
-    final dateStr =
-        '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
+    final dateStr = AppDateUtils.formatDate(now);
 
     final device = order.device;
     final customer = order.customer;
@@ -142,8 +142,7 @@ class PdfGeneratorService {
                     const pw.TextSpan(
                         text: ' que ingreso a nuestras instalaciones el dia '),
                     pw.TextSpan(
-                      text:
-                          '${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year}',
+                      text: AppDateUtils.formatDate(order.createdAt),
                       style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                     ),
                     const pw.TextSpan(

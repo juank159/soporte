@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../config/theme.dart';
+import '../../config/date_utils.dart';
 import '../../services/api_service.dart';
 import '../../widgets/glass_card.dart';
 
@@ -26,6 +27,20 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
   bool _loading = true;
   bool _saving = false;
   String? _logoUrl;
+  String _selectedTimezone = 'America/Bogota';
+
+  static const _timezones = [
+    ('America/Bogota', 'Colombia (UTC-5)'),
+    ('America/Lima', 'Peru (UTC-5)'),
+    ('America/Mexico_City', 'Mexico (UTC-6)'),
+    ('America/Panama', 'Panama (UTC-5)'),
+    ('America/Guayaquil', 'Ecuador (UTC-5)'),
+    ('America/Caracas', 'Venezuela (UTC-4)'),
+    ('America/Santiago', 'Chile (UTC-4)'),
+    ('America/Buenos_Aires', 'Argentina (UTC-3)'),
+    ('America/Sao_Paulo', 'Brasil (UTC-3)'),
+    ('America/New_York', 'Este EEUU (UTC-5)'),
+  ];
 
   @override
   void initState() {
@@ -59,6 +74,7 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
       _warrantyConditionsCtrl.text = data['warrantyConditions'] ?? '';
       _legalNoticeCtrl.text = data['legalNotice'] ?? '';
       _logoUrl = data['logoUrl'];
+      _selectedTimezone = data['timezone'] ?? 'America/Bogota';
     } catch (_) {}
     setState(() => _loading = false);
   }
@@ -68,6 +84,7 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
     try {
       await _api.dio.put('/tenants/me', data: {
         'logoUrl': _logoUrl,
+        'timezone': _selectedTimezone,
         'name': _nameCtrl.text.trim(),
         'nit': _nitCtrl.text.trim(),
         'address': _addressCtrl.text.trim(),
@@ -86,6 +103,7 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
           ]),
           backgroundColor: AppTheme.accentGreen,
         ));
+        AppDateUtils.configure(_selectedTimezone);
       }
     } catch (e) {
       if (mounted) {
@@ -227,6 +245,50 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
                           _field(_emailCtrl, 'Email',
                               Icons.email_rounded,
                               keyboard: TextInputType.emailAddress),
+                        ],
+                      ),
+                    ),
+
+                    // Zona horaria
+                    GlassCard(
+                      borderColor: AppTheme.accentBlue.withValues(alpha: 0.3),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(children: [
+                            Icon(Icons.schedule_rounded,
+                                color: AppTheme.accentBlue, size: 20),
+                            SizedBox(width: 8),
+                            Text('Zona horaria',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.accentBlue,
+                                    fontSize: 15)),
+                          ]),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Todas las fechas y horas se mostraran segun esta zona horaria.',
+                            style: TextStyle(
+                                color: AppTheme.textSecondary, fontSize: 12),
+                          ),
+                          const SizedBox(height: 10),
+                          DropdownButtonFormField<String>(
+                            value: _selectedTimezone,
+                            dropdownColor: AppTheme.surfaceColor,
+                            style: const TextStyle(color: AppTheme.textPrimary),
+                            decoration: const InputDecoration(
+                              prefixIcon: Icon(Icons.public_rounded),
+                            ),
+                            items: _timezones.map((tz) {
+                              return DropdownMenuItem(
+                                value: tz.$1,
+                                child: Text(tz.$2, style: const TextStyle(fontSize: 14)),
+                              );
+                            }).toList(),
+                            onChanged: (v) {
+                              if (v != null) setState(() => _selectedTimezone = v);
+                            },
+                          ),
                         ],
                       ),
                     ),

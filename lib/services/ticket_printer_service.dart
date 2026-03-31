@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/service_order.dart';
 import '../models/tenant.dart';
 import '../config/api_config.dart';
+import '../config/date_utils.dart';
 import 'esc_pos_generator.dart';
 
 class PrinterDevice {
@@ -316,7 +317,7 @@ class TicketPrinterService {
               style: const pw.TextStyle(fontSize: 7)),
           pw.SizedBox(height: 6),
           pw.Divider(),
-          _pdfRow('Fecha', _fmtDate(order.createdAt)),
+          _pdfRow('Fecha', AppDateUtils.format(order.createdAt)),
           pw.Divider(),
           pw.Align(alignment: pw.Alignment.centerLeft,
             child: pw.Text('CLIENTE',
@@ -363,9 +364,6 @@ class TicketPrinterService {
     ),
   );
 
-  String _fmtDate(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year} '
-      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
   // ==========================================
   //  ESC/POS (for TCP thermal printers only)
@@ -398,7 +396,7 @@ class TicketPrinterService {
     gen.feed(1);
     gen.printSeparator();
     gen.setAlign(0);
-    gen.printTwoColumns('Fecha:', _fmtDate(order.createdAt));
+    gen.printTwoColumns('Fecha:', AppDateUtils.format(order.createdAt));
     gen.printSeparator();
     gen.setBold(true); gen.printLine('DATOS DEL CLIENTE'); gen.setBold(false);
     gen.printTwoColumns('Nombre:', _s(order.customer?.fullName ?? '-'));

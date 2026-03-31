@@ -3,6 +3,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../models/service_order.dart';
 import '../models/tenant.dart';
 import '../config/api_config.dart';
+import '../config/date_utils.dart';
 
 /// Widget que muestra una vista previa del ticket de recepción 80mm en pantalla.
 /// Simula el look de un ticket térmico impreso (fondo blanco, texto negro).
@@ -96,7 +97,7 @@ class TicketPreviewWidget extends StatelessWidget {
           const Divider(color: _grey, height: 8),
 
           // Date
-          _row('Fecha:', _formatDate(order.createdAt)),
+          _row('Fecha:', AppDateUtils.format(order.createdAt)),
 
           _sectionTitle('DATOS DEL CLIENTE'),
           _row('Nombre:', order.customer?.fullName ?? '-'),
@@ -178,11 +179,4 @@ class TicketPreviewWidget extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/'
-        '${date.month.toString().padLeft(2, '0')}/'
-        '${date.year} '
-        '${date.hour.toString().padLeft(2, '0')}:'
-        '${date.minute.toString().padLeft(2, '0')}';
-  }
 }
