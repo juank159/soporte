@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../config/theme.dart';
 import '../../widgets/glass_card.dart';
@@ -20,6 +22,10 @@ class _LoginScreenState extends State<LoginScreen>
   final _tenantController = TextEditingController();
   bool _obscurePassword = true;
 
+  // Saved accounts
+  List<Map<String, String>> _savedAccounts = [];
+  String _lastTenant = '';
+
   late final AnimationController _fadeController;
   late final AnimationController _slideController;
   late final Animation<double> _fadeAnimation;
@@ -28,6 +34,8 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void initState() {
     super.initState();
+    _loadSavedAccounts();
+
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -55,6 +63,34 @@ class _LoginScreenState extends State<LoginScreen>
     });
   }
 
+  Future<void> _loadSavedAccounts() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getString('saved_login_accounts');
+    final tenant = prefs.getString('last_tenant') ?? '';
+    if (data != null) {
+      final list = jsonDecode(data) as List;
+      setState(() {
+        _savedAccounts = list.map((e) => Map<String, String>.from(e)).toList();
+        _lastTenant = tenant;
+        if (_lastTenant.isNotEmpty) {
+          _tenantController.text = _lastTenant;
+        }
+      });
+    }
+  }
+
+  Future<void> _saveAccount(String email, String tenant) async {
+    final prefs = await SharedPreferences.getInstance();
+    // Remove if already exists
+    _savedAccounts.removeWhere((a) => a['email'] == email && a['tenant'] == tenant);
+    // Add to top
+    _savedAccounts.insert(0, {'email': email, 'tenant': tenant});
+    // Keep max 5
+    if (_savedAccounts.length > 5) _savedAccounts = _savedAccounts.sublist(0, 5);
+    await prefs.setString('saved_login_accounts', jsonEncode(_savedAccounts));
+    await prefs.setString('last_tenant', tenant);
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -67,10 +103,13 @@ class _LoginScreenState extends State<LoginScreen>
 
   void _login() {
     if (_formKey.currentState!.validate()) {
+      final email = _emailController.text.trim();
+      final tenant = _tenantController.text.trim().toLowerCase();
+      _saveAccount(email, tenant);
       context.read<AuthBloc>().add(AuthLoginRequested(
-            email: _emailController.text.trim(),
+            email: email,
             password: _passwordController.text,
-            tenantSlug: _tenantController.text.trim().toLowerCase(),
+            tenantSlug: tenant,
           ));
     }
   }
@@ -312,6 +351,48 @@ class _LoginScreenState extends State<LoginScreen>
               style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 28),
+
+            // Saved accounts quick select
+            if (_savedAccounts.isNotEmpty) ...[
+              const Text('Cuentas recientes',
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 44,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _savedAccounts.length,
+                  itemBuilder: (context, i) {
+                    final acc = _savedAccounts[i];
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ActionChip(
+                        avatar: CircleAvatar(
+                          radius: 12,
+                          backgroundColor: AppTheme.accentCyan.withValues(alpha: 0.15),
+                          child: Text(
+                            (acc['email'] ?? 'U')[0].toUpperCase(),
+                            style: const TextStyle(
+                                color: AppTheme.accentCyan, fontSize: 10),
+                          ),
+                        ),
+                        label: Text(
+                          acc['email'] ?? '',
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _emailController.text = acc['email'] ?? '';
+                            _tenantController.text = acc['tenant'] ?? '';
+                          });
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
 
             // Tenant
             TextFormField(
