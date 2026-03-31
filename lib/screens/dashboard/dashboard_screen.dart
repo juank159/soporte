@@ -14,6 +14,7 @@ import '../settings/printer_setup_screen.dart';
 import '../settings/device_catalog_screen.dart';
 import '../settings/users_management_screen.dart';
 import '../settings/tenant_settings_screen.dart';
+import '../settings/subscription_screen.dart';
 import '../../widgets/sync_status_widget.dart';
 import '../reports/reports_screen.dart';
 import '../orders/order_detail_screen.dart';
@@ -207,6 +208,9 @@ class _DashboardScreenState extends State<DashboardScreen>
               } else if (value == 'users') {
                 Navigator.push(context,
                     MaterialPageRoute(builder: (_) => const UsersManagementScreen()));
+              } else if (value == 'subscription') {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
               } else if (value == 'tenant') {
                 Navigator.push(context,
                     MaterialPageRoute(builder: (_) => const TenantSettingsScreen()));
@@ -235,6 +239,14 @@ class _DashboardScreenState extends State<DashboardScreen>
               // Solo admin ve configuraciones
               if (_isAdmin) {
                 items.addAll([
+                  const PopupMenuItem(
+                    value: 'subscription',
+                    child: Row(children: [
+                      Icon(Icons.workspace_premium_rounded, size: 18),
+                      SizedBox(width: 10),
+                      Text('Suscripcion'),
+                    ]),
+                  ),
                   const PopupMenuItem(
                     value: 'tenant',
                     child: Row(children: [
@@ -409,6 +421,15 @@ class _DashboardHome extends StatelessWidget {
       counts[o.status] = (counts[o.status] ?? 0) + 1;
     }
 
+    // Count today's orders
+    final today = DateTime.now();
+    final todayOrders = orders.where((o) =>
+        o.createdAt.year == today.year &&
+        o.createdAt.month == today.month &&
+        o.createdAt.day == today.day).length;
+    final pendingOrders = orders.where((o) =>
+        o.status != 'delivered' && o.status != 'closed').length;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth > 600;
@@ -425,7 +446,7 @@ class _DashboardHome extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Greeting
+              // Greeting with stats
               Text(
                 'Hola, ${user.fullName}',
                 style: TextStyle(
@@ -436,9 +457,9 @@ class _DashboardHome extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '${orders.length} ordenes activas',
+                '$pendingOrders pendientes | $todayOrders hoy | ${orders.length} total',
                 style: const TextStyle(
-                    color: AppTheme.textSecondary, fontSize: 14),
+                    color: AppTheme.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 20),
 

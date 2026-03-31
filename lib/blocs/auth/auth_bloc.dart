@@ -1,6 +1,10 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/date_utils.dart';
 import '../../services/api_service.dart';
 import '../../models/user.dart';
@@ -80,14 +84,25 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         event.password,
         event.tenantSlug,
       );
-      // Load tenant timezone
+      // Save user for session persistence
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_data', jsonEncode({
+        'id': user.id,
+        'email': user.email,
+        'fullName': user.fullName,
+        'role': user.role,
+        'tenantId': user.tenantId,
+      }));
+
+      // Load tenant timezone + register device
       try {
         final api = ApiService();
         final res = await api.dio.get('/tenants/me');
         final tz = res.data['timezone'] ?? 'America/Bogota';
         AppDateUtils.configure(tz);
-        debugPrint('TIMEZONE: Configured to $tz');
       } catch (_) {}
+
+      await _registerDevice();
 
       emit(AuthAuthenticated(user));
     } catch (e) {
@@ -102,6 +117,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     await _authService.logout();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('user_data');
     emit(AuthUnauthenticated());
   }
 
@@ -110,12 +127,91 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     final isLoggedIn = await _authService.isLoggedIn();
-    if (isLoggedIn) {
-      // For now, emit unauthenticated to force login
-      // In production, decode the JWT to get user info
+    if (!isLoggedIn) {
       emit(AuthUnauthenticated());
-    } else {
+      return;
+    }
+
+    // Restore saved user data
+    final prefs = await SharedPreferences.getInstance();
+    final userData = prefs.getString('user_data');
+    if (userData == null) {
       emit(AuthUnauthenticated());
+      return;
+    }
+
+    try {
+      final data = jsonDecode(userData) as Map<String, dynamic>;
+      final user = User.fromJson(data);
+
+      // Verify token is still valid
+      try {
+        final api = ApiService();
+        final res = await api.dio.get('/tenants/me');
+        final tz = res.data['timezone'] ?? 'America/Bogota';
+        AppDateUtils.configure(tz);
+      } catch (_) {
+        // Token expired, clear and force login
+        await _authService.logout();
+        await prefs.remove('user_data');
+        emit(AuthUnauthenticated());
+        return;
+      }
+
+      await _registerDevice();
+
+      emit(AuthAuthenticated(user));
+    } catch (_) {
+      emit(AuthUnauthenticated());
+    }
+  }
+
+  Future<void> _registerDevice() async {
+    try {
+      final api = ApiService();
+      final prefs = await SharedPreferences.getInstance();
+
+      // Generate unique device ID (persistent across restarts)
+      var deviceId = prefs.getString('device_unique_id');
+      if (deviceId == null) {
+        deviceId = '${DateTime.now().millisecondsSinceEpoch}-${DateTime.now().microsecond}';
+        await prefs.setString('device_unique_id', deviceId);
+      }
+
+      // Detect platform
+      String platform;
+      String deviceName;
+      if (kIsWeb) {
+        platform = 'Web';
+        deviceName = 'Navegador Web';
+      } else if (Platform.isAndroid) {
+        platform = 'Android';
+        deviceName = 'Android';
+      } else if (Platform.isIOS) {
+        platform = 'iOS';
+        deviceName = 'iPhone/iPad';
+      } else if (Platform.isMacOS) {
+        platform = 'macOS';
+        deviceName = 'Mac';
+      } else if (Platform.isWindows) {
+        platform = 'Windows';
+        deviceName = 'Windows PC';
+      } else if (Platform.isLinux) {
+        platform = 'Linux';
+        deviceName = 'Linux PC';
+      } else {
+        platform = 'Otro';
+        deviceName = 'Dispositivo';
+      }
+
+      await api.dio.post('/subscription/register-device', data: {
+        'deviceId': deviceId,
+        'deviceName': deviceName,
+        'platform': platform,
+      });
+      debugPrint('DEVICE: Registered $deviceName ($platform) id=$deviceId');
+    } catch (e) {
+      debugPrint('DEVICE: Registration failed: $e');
     }
   }
 

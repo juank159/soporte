@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/customers/customers_bloc.dart';
 import '../../config/theme.dart';
+import '../../models/customer.dart';
+import '../../services/customer_service.dart';
 import '../../widgets/glass_card.dart';
 
 class CustomersScreen extends StatefulWidget {
@@ -24,6 +26,64 @@ class _CustomersScreenState extends State<CustomersScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _showEditDialog(Customer c) {
+    final nameCtrl = TextEditingController(text: c.fullName);
+    final idCtrl = TextEditingController(text: c.idNumber);
+    final phoneCtrl = TextEditingController(text: c.phone);
+    final emailCtrl = TextEditingController(text: c.email ?? '');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(children: [
+          const Icon(Icons.edit_rounded, color: AppTheme.accentCyan),
+          const SizedBox(width: 10),
+          Text('Editar ${c.fullName}',
+              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
+        ]),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(controller: nameCtrl,
+                style: const TextStyle(color: AppTheme.textPrimary),
+                decoration: const InputDecoration(labelText: 'Nombre')),
+            const SizedBox(height: 12),
+            TextField(controller: idCtrl,
+                style: const TextStyle(color: AppTheme.textPrimary),
+                decoration: const InputDecoration(labelText: 'Cedula / NIT')),
+            const SizedBox(height: 12),
+            TextField(controller: phoneCtrl,
+                style: const TextStyle(color: AppTheme.textPrimary),
+                decoration: const InputDecoration(labelText: 'Telefono'),
+                keyboardType: TextInputType.phone),
+            const SizedBox(height: 12),
+            TextField(controller: emailCtrl,
+                style: const TextStyle(color: AppTheme.textPrimary),
+                decoration: const InputDecoration(labelText: 'Email'),
+                keyboardType: TextInputType.emailAddress),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await CustomerService().updateCustomer(c.id, {
+                  'fullName': nameCtrl.text.trim(),
+                  'idNumber': idCtrl.text.trim(),
+                  'phone': phoneCtrl.text.trim(),
+                  'email': emailCtrl.text.trim().isNotEmpty ? emailCtrl.text.trim() : null,
+                });
+                if (ctx.mounted) Navigator.pop(ctx);
+                context.read<CustomersBloc>().add(CustomersLoadRequested());
+              } catch (_) {}
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showCreateDialog() {
@@ -245,6 +305,12 @@ class _CustomersScreenState extends State<CustomersScreen> {
                                 color: AppTheme.textSecondary
                                     .withValues(alpha: 0.5),
                                 size: 18),
+                          const SizedBox(width: 4),
+                          IconButton(
+                            icon: const Icon(Icons.edit_rounded,
+                                color: AppTheme.textSecondary, size: 18),
+                            onPressed: () => _showEditDialog(c),
+                          ),
                         ],
                       ),
                     );

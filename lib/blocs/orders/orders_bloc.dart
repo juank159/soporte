@@ -32,6 +32,7 @@ class OrderCreateRequested extends OrdersEvent {
   final String? deviceColor;
   final List<String>? accessories;
   final List<File>? photos;
+  final String? technicianId;
 
   OrderCreateRequested({
     required this.customerId,
@@ -41,6 +42,7 @@ class OrderCreateRequested extends OrdersEvent {
     required this.problemReported,
     this.deviceSerial,
     this.deviceImei,
+    this.technicianId,
     this.deviceColor,
     this.accessories,
     this.photos,
@@ -142,6 +144,7 @@ class OrdersBloc extends Bloc<OrdersEvent, OrdersState> {
         deviceImei: event.deviceImei,
         deviceColor: event.deviceColor,
         accessories: event.accessories,
+        technicianId: event.technicianId,
         photos: event.photos,
       );
       emit(OrderCreated(order));

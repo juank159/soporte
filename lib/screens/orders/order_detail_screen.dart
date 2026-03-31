@@ -42,11 +42,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     _refreshOrder();
     _loadTenant();
     _loadHistory();
+    _loadPhotos();
   }
 
   final TicketPrinterService _printerService = TicketPrinterService();
   final PdfGeneratorService _pdfGenerator = PdfGeneratorService();
   List<Map<String, dynamic>> _history = [];
+  List<Map<String, dynamic>> _photos = [];
 
   void _onMenuAction(String action) {
     switch (action) {
@@ -165,6 +167,28 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         ));
       }
     }
+  }
+
+  void _showFullPhoto(Uint8List bytes) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: GestureDetector(
+          onTap: () => Navigator.pop(ctx),
+          child: InteractiveViewer(
+            child: Image.memory(bytes),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _loadPhotos() async {
+    try {
+      final res = await _api.dio.get('/orders/${_order.id}/photos');
+      setState(() => _photos = (res.data as List).cast<Map<String, dynamic>>());
+    } catch (_) {}
   }
 
   Future<void> _loadHistory() async {
@@ -802,8 +826,45 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             _infoRow('Entregada', AppDateUtils.format(_order.deliveredAt!)),
           if (_order.closedAt != null)
             _infoRow('Cerrada', AppDateUtils.format(_order.closedAt!)),
-          _infoRow('Garantia', '${_order.warrantyDays} dias'),
+          if (_order.warrantyDays > 0)
+            _infoRow('Garantia', '${_order.warrantyDays} dias'),
         ]),
+
+        // Photos
+        if (_photos.isNotEmpty)
+          _sectionCard('Fotos del equipo', Icons.photo_library_rounded,
+              AppTheme.accentOrange, [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _photos.map((p) {
+                final url = p['photoUrl'] as String? ?? '';
+                if (url.contains('base64,')) {
+                  try {
+                    final bytes = base64Decode(url.split('base64,').last);
+                    return GestureDetector(
+                      onTap: () => _showFullPhoto(bytes),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.memory(bytes,
+                            width: 80, height: 80, fit: BoxFit.cover),
+                      ),
+                    );
+                  } catch (_) {}
+                }
+                return Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceColor,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.broken_image_rounded,
+                      color: AppTheme.textSecondary),
+                );
+              }).toList(),
+            ),
+          ]),
       ],
     );
   }

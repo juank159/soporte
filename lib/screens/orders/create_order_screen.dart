@@ -139,7 +139,16 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     setState(() => _searchingCustomers = false);
   }
 
+  static const _maxPhotos = 4;
+
   Future<void> _takePhoto() async {
+    if (_photos.length >= _maxPhotos) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Maximo 4 fotos por orden'),
+        backgroundColor: AppTheme.accentOrange,
+      ));
+      return;
+    }
     final isDesktop = Theme.of(context).platform == TargetPlatform.macOS ||
         Theme.of(context).platform == TargetPlatform.windows ||
         Theme.of(context).platform == TargetPlatform.linux;
@@ -200,20 +209,27 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     String customerId;
 
     if (_customerMode == 2) {
-      // Express: create anonymous client with timestamp
+      // Express: use existing "Cliente Express" (created with tenant)
       try {
-        final ts = DateTime.now().millisecondsSinceEpoch.toString();
-        final c = await _customerService.createCustomer(
-          fullName: 'Express #${ts.substring(ts.length - 6)}',
-          idNumber: 'EXP-$ts',
-          phone: '0000000000',
-        );
-        customerId = c.id;
+        final customers =
+            await _customerService.getCustomers(search: 'EXPRESS');
+        final express =
+            customers.where((c) => c.idNumber == 'EXPRESS').firstOrNull;
+        if (express != null) {
+          customerId = express.id;
+        } else {
+          final c = await _customerService.createCustomer(
+            fullName: 'Cliente Express',
+            idNumber: 'EXPRESS',
+            phone: '0000000000',
+          );
+          customerId = c.id;
+        }
       } catch (_) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Error al crear cliente express'),
+              content: Text('Error con cliente express'),
               backgroundColor: AppTheme.accentRed,
             ),
           );
@@ -272,6 +288,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             ? _deviceColorCtrl.text.trim()
             : null,
         accessories: accessories.isNotEmpty ? accessories : null,
+        technicianId: _selectedTechnicianId,
         photos: _photos.isNotEmpty ? _photos : null,
       ),
     );
@@ -796,6 +813,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 ],
               ),
             ),
+            if (_photos.length < _maxPhotos)
             InkWell(
               onTap: _takePhoto,
               borderRadius: BorderRadius.circular(12),
