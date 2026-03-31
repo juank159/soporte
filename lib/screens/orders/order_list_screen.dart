@@ -5,6 +5,7 @@ import '../../blocs/orders/orders_bloc.dart';
 import '../../config/theme.dart';
 import '../../config/format_utils.dart';
 import '../../widgets/glass_card.dart';
+import '../../widgets/date_range_picker.dart';
 import '../dashboard/dashboard_screen.dart';
 import 'order_detail_screen.dart';
 
@@ -64,37 +65,13 @@ class _OrderListScreenState extends State<OrderListScreen> {
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   Future<void> _showDatePicker() async {
-    final now = DateTime.now();
-    final range = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: now,
-      initialDateRange: _dateFrom != null && _dateTo != null
-          ? DateTimeRange(
-              start: DateTime.parse(_dateFrom!),
-              end: DateTime.parse(_dateTo!))
-          : DateTimeRange(
-              start: now.subtract(const Duration(days: 30)), end: now),
-      builder: (context, child) {
-        return Theme(
-          data: AppTheme.darkTheme.copyWith(
-            datePickerTheme: DatePickerThemeData(
-              backgroundColor: AppTheme.surfaceColor,
-              headerBackgroundColor: AppTheme.cardColor,
-              rangePickerBackgroundColor: AppTheme.surfaceColor,
-              rangeSelectionBackgroundColor:
-                  AppTheme.accentCyan.withValues(alpha: 0.15),
-            ),
-          ),
-          child: child!,
-        );
-      },
+    final result = await showDateRangePickerDialog(
+      context,
+      initialFrom: _dateFrom,
+      initialTo: _dateTo,
     );
-
-    if (range != null) {
-      final label =
-          '${range.start.day}/${range.start.month} - ${range.end.day}/${range.end.month}';
-      _setDateFilter(label, _fmt(range.start), _fmt(range.end));
+    if (result != null) {
+      _setDateFilter(result['label'] ?? 'Rango', result['from'], result['to']);
     }
   }
 
