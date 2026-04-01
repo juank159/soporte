@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../models/service_order.dart';
@@ -10,11 +11,13 @@ import '../config/date_utils.dart';
 class TicketPreviewWidget extends StatelessWidget {
   final ServiceOrder order;
   final Tenant tenant;
+  final String? technicianName;
 
   const TicketPreviewWidget({
     super.key,
     required this.order,
     required this.tenant,
+    this.technicianName,
   });
 
   static const _black = Color(0xFF1A1A1A);
@@ -42,6 +45,25 @@ class TicketPreviewWidget extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Logo
+          if (tenant.logoUrl != null &&
+              tenant.logoUrl!.startsWith('data:') &&
+              tenant.logoUrl!.contains(','))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Image.memory(
+                base64Decode(tenant.logoUrl!.split(',').last),
+                height: 50,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            )
+          else if (tenant.logoUrl != null && tenant.logoUrl!.startsWith('http'))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Image.network(tenant.logoUrl!, height: 50,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+            ),
+
           // Header - Tenant info
           Text(
             tenant.name,
@@ -119,6 +141,9 @@ class TicketPreviewWidget extends StatelessWidget {
                 style: const TextStyle(fontSize: 10, color: _black),
               ),
             ),
+
+          if (technicianName != null && technicianName!.isNotEmpty)
+            _row('Tecnico:', technicianName!),
 
           _sectionTitle('PROBLEMA'),
           Align(

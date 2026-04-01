@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:pdf/pdf.dart';
@@ -289,6 +290,7 @@ class TicketPrinterService {
       build: (ctx) => pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.center,
         children: [
+          if (_hasLogo(tenant)) _buildLogo(tenant),
           pw.Text(tenant.name,
               style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
               textAlign: pw.TextAlign.center),
@@ -333,6 +335,8 @@ class TicketPrinterService {
           _pdfRow('Marca', order.device?.brand ?? '-'),
           _pdfRow('Modelo', order.device?.model ?? '-'),
           if (order.device?.serial != null) _pdfRow('Serial', order.device!.serial!),
+          if (order.device?.accessories != null && order.device!.accessories!.isNotEmpty)
+            _pdfRow('Accesorios', order.device!.accessories!.join(', ')),
           pw.Divider(),
           pw.Align(alignment: pw.Alignment.centerLeft,
             child: pw.Text('PROBLEMA',
@@ -408,6 +412,8 @@ class TicketPrinterService {
     gen.printTwoColumns('Marca:', _s(order.device?.brand ?? '-'));
     gen.printTwoColumns('Modelo:', _s(order.device?.model ?? '-'));
     if (order.device?.serial != null) gen.printTwoColumns('Serial:', order.device!.serial!);
+    if (order.device?.accessories != null && order.device!.accessories!.isNotEmpty)
+      gen.printTwoColumns('Accesorios:', _s(order.device!.accessories!.join(', ')));
     gen.printSeparator();
     gen.setBold(true); gen.printLine('PROBLEMA'); gen.setBold(false);
     for (final l in _w(_s(order.problemReported), 48)) gen.printLine(l);
@@ -419,6 +425,21 @@ class TicketPrinterService {
     gen.feed(4);
     gen.cut();
     return gen.getBytes();
+  }
+
+  bool _hasLogo(Tenant t) =>
+      t.logoUrl != null && t.logoUrl!.contains('base64,');
+
+  pw.Widget _buildLogo(Tenant t) {
+    try {
+      final bytes = base64Decode(t.logoUrl!.split('base64,').last);
+      return pw.Padding(
+        padding: const pw.EdgeInsets.only(bottom: 6),
+        child: pw.Image(pw.MemoryImage(bytes), height: 40),
+      );
+    } catch (_) {
+      return pw.SizedBox.shrink();
+    }
   }
 
   String _s(String t) => t
