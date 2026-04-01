@@ -28,7 +28,8 @@ enum PrinterConnectionType { tcp, system }
 /// Servicio unificado de impresión. Singleton.
 /// Reconecta automáticamente antes de cada impresión.
 class TicketPrinterService {
-  static final TicketPrinterService _instance = TicketPrinterService._internal();
+  static final TicketPrinterService _instance =
+      TicketPrinterService._internal();
   factory TicketPrinterService() => _instance;
   TicketPrinterService._internal();
 
@@ -64,15 +65,23 @@ class TicketPrinterService {
   Future<bool> connectTcp(String host, int port, {String? name}) async {
     await _closeSocket();
     try {
-      _socket = await Socket.connect(host, port,
-          timeout: const Duration(seconds: 5));
+      _socket = await Socket.connect(
+        host,
+        port,
+        timeout: const Duration(seconds: 5),
+      );
       _systemPrinter = null;
       _connectedDevice = PrinterDevice(
         name: name ?? '$host:$port',
         address: '$host:$port',
         type: PrinterConnectionType.tcp,
       );
-      await _saveConfig(type: 'tcp', host: host, port: port, name: name ?? '$host:$port');
+      await _saveConfig(
+        type: 'tcp',
+        host: host,
+        port: port,
+        name: name ?? '$host:$port',
+      );
       debugPrint('PRINTER: TCP connected to $host:$port');
       return true;
     } catch (e) {
@@ -107,7 +116,9 @@ class TicketPrinterService {
   }
 
   Future<void> _closeSocket() async {
-    try { await _socket?.close(); } catch (_) {}
+    try {
+      await _socket?.close();
+    } catch (_) {}
     _socket = null;
   }
 
@@ -166,7 +177,9 @@ class TicketPrinterService {
             address: _systemPrinter!.url,
             type: PrinterConnectionType.system,
           );
-          debugPrint('PRINTER: System printer resolved: ${_systemPrinter!.name}');
+          debugPrint(
+            'PRINTER: System printer resolved: ${_systemPrinter!.name}',
+          );
           return true;
         }
       } catch (e) {
@@ -257,109 +270,191 @@ class TicketPrinterService {
 
   Future<Uint8List> _generateTestPdf() async {
     final pdf = pw.Document();
-    pdf.addPage(pw.Page(
-      pageFormat: const PdfPageFormat(72 * PdfPageFormat.mm, 120 * PdfPageFormat.mm),
-      margin: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-      build: (ctx) => pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.center,
-        children: [
-          pw.Text('PRUEBA DE IMPRESION',
-              style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 10),
-          pw.Divider(),
-          pw.SizedBox(height: 6),
-          pw.Text('Impresora configurada'),
-          pw.Text('correctamente.'),
-          pw.SizedBox(height: 10),
-          pw.Text('Servicio Tecnico SaaS', style: const pw.TextStyle(fontSize: 9)),
-          pw.SizedBox(height: 6),
-          pw.Text(DateTime.now().toString().substring(0, 19),
-              style: const pw.TextStyle(fontSize: 9)),
-          pw.SizedBox(height: 16),
-        ],
+    pdf.addPage(
+      pw.Page(
+        pageFormat: const PdfPageFormat(
+          72 * PdfPageFormat.mm,
+          120 * PdfPageFormat.mm,
+        ),
+        margin: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        build: (ctx) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.center,
+          children: [
+            pw.Text(
+              'PRUEBA DE IMPRESION',
+              style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 10),
+            pw.Divider(),
+            pw.SizedBox(height: 6),
+            pw.Text('Impresora configurada'),
+            pw.Text('correctamente.'),
+            pw.SizedBox(height: 10),
+            pw.Text(
+              'Servicio Tecnico SaaS',
+              style: const pw.TextStyle(fontSize: 9),
+            ),
+            pw.SizedBox(height: 6),
+            pw.Text(
+              DateTime.now().toString().substring(0, 19),
+              style: const pw.TextStyle(fontSize: 9),
+            ),
+            pw.SizedBox(height: 16),
+          ],
+        ),
       ),
-    ));
+    );
     return pdf.save();
   }
 
   Future<Uint8List> generateTicketPdf(ServiceOrder order, Tenant tenant) async {
     final pdf = pw.Document();
-    pdf.addPage(pw.Page(
-      pageFormat: const PdfPageFormat(72 * PdfPageFormat.mm, 260 * PdfPageFormat.mm),
-      margin: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 14),
-      build: (ctx) => pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.center,
-        children: [
-          if (_hasLogo(tenant)) _buildLogo(tenant),
-          pw.Text(tenant.name,
+    pdf.addPage(
+      pw.Page(
+        pageFormat: const PdfPageFormat(
+          72 * PdfPageFormat.mm,
+          260 * PdfPageFormat.mm,
+        ),
+        margin: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+        build: (ctx) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.center,
+          children: [
+            if (_hasLogo(tenant)) _buildLogo(tenant),
+            pw.Text(
+              tenant.name,
               style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
-              textAlign: pw.TextAlign.center),
-          if (tenant.nit != null)
-            pw.Text('NIT: ${tenant.nit}', style: const pw.TextStyle(fontSize: 8)),
-          if (tenant.address != null)
-            pw.Text(tenant.address!, style: const pw.TextStyle(fontSize: 7),
-                textAlign: pw.TextAlign.center),
-          if (tenant.phone != null)
-            pw.Text('Tel: ${tenant.phone}', style: const pw.TextStyle(fontSize: 7)),
-          pw.Divider(thickness: 1.5),
-          pw.SizedBox(height: 6),
-          pw.Text(order.orderNumber,
-              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-          pw.Text('ORDEN DE SERVICIO', style: const pw.TextStyle(fontSize: 8)),
-          pw.SizedBox(height: 10),
-          pw.BarcodeWidget(
-            barcode: pw.Barcode.qrCode(),
-            data: '${ApiConfig.statusPageUrl}/status/${order.id}',
-            width: 90, height: 90,
-          ),
-          pw.SizedBox(height: 4),
-          pw.Text('Consulta el estado de tu equipo',
-              style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)),
-          pw.Text('escaneando este codigo QR',
-              style: const pw.TextStyle(fontSize: 7)),
-          pw.SizedBox(height: 6),
-          pw.Divider(),
-          _pdfRow('Fecha', AppDateUtils.format(order.createdAt)),
-          pw.Divider(),
-          pw.Align(alignment: pw.Alignment.centerLeft,
-            child: pw.Text('CLIENTE',
-                style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold))),
-          _pdfRow('Nombre', order.customer?.fullName ?? '-'),
-          _pdfRow('Cedula', order.customer?.idNumber ?? '-'),
-          _pdfRow('Tel', order.customer?.phone ?? '-'),
-          pw.Divider(),
-          pw.Align(alignment: pw.Alignment.centerLeft,
-            child: pw.Text('EQUIPO',
-                style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold))),
-          _pdfRow('Tipo', order.device?.type ?? '-'),
-          _pdfRow('Marca', order.device?.brand ?? '-'),
-          _pdfRow('Modelo', order.device?.model ?? '-'),
-          if (order.device?.serial != null) _pdfRow('Serial', order.device!.serial!),
-          if (order.device?.accessories != null && order.device!.accessories!.isNotEmpty) ...[
+              textAlign: pw.TextAlign.center,
+            ),
+            if (tenant.nit != null)
+              pw.Text(
+                'NIT: ${tenant.nit}',
+                style: const pw.TextStyle(fontSize: 8),
+              ),
+            if (tenant.address != null)
+              pw.Text(
+                tenant.address!,
+                style: const pw.TextStyle(fontSize: 7),
+                textAlign: pw.TextAlign.center,
+              ),
+            if (tenant.phone != null)
+              pw.Text(
+                'Tel: ${tenant.phone}',
+                style: const pw.TextStyle(fontSize: 7),
+              ),
+            pw.Divider(thickness: 1.5),
+            pw.SizedBox(height: 6),
+            pw.Text(
+              order.orderNumber,
+              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.Text(
+              'ORDEN DE SERVICIO',
+              style: const pw.TextStyle(fontSize: 8),
+            ),
+            pw.SizedBox(height: 10),
+            pw.BarcodeWidget(
+              barcode: pw.Barcode.qrCode(),
+              data: '${ApiConfig.statusPageUrl}/status/${order.id}',
+              width: 90,
+              height: 90,
+            ),
+            pw.SizedBox(height: 4),
+            pw.Text(
+              'Consulta el estado de tu equipo',
+              style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.Text(
+              'escaneando este codigo QR',
+              style: const pw.TextStyle(fontSize: 7),
+            ),
+            pw.SizedBox(height: 6),
             pw.Divider(),
-            pw.Align(alignment: pw.Alignment.centerLeft,
-              child: pw.Text('ACCESORIOS ENTREGADOS',
-                  style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold))),
-            pw.Align(alignment: pw.Alignment.centerLeft,
-              child: pw.Text(order.device!.accessories!.join(', '), style: const pw.TextStyle(fontSize: 7))),
+            _pdfRow('Fecha', AppDateUtils.format(order.createdAt)),
+            pw.Divider(),
+            pw.Align(
+              alignment: pw.Alignment.centerLeft,
+              child: pw.Text(
+                'CLIENTE',
+                style: pw.TextStyle(
+                  fontSize: 8,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+            ),
+            _pdfRow('Nombre', order.customer?.fullName ?? '-'),
+            _pdfRow('Cedula', order.customer?.idNumber ?? '-'),
+            _pdfRow('Tel', order.customer?.phone ?? '-'),
+            pw.Divider(),
+            pw.Align(
+              alignment: pw.Alignment.centerLeft,
+              child: pw.Text(
+                'EQUIPO',
+                style: pw.TextStyle(
+                  fontSize: 8,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+            ),
+            _pdfRow('Tipo', order.device?.type ?? '-'),
+            _pdfRow('Marca', order.device?.brand ?? '-'),
+            _pdfRow('Modelo', order.device?.model ?? '-'),
+            if (order.device?.serial != null)
+              _pdfRow('Serial', order.device!.serial!),
+            if (order.device?.accessories != null &&
+                order.device!.accessories!.isNotEmpty) ...[
+              pw.Divider(),
+              pw.Align(
+                alignment: pw.Alignment.centerLeft,
+                child: pw.Text(
+                  'ACCESORIOS',
+                  style: pw.TextStyle(
+                    fontSize: 8,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+              ),
+              pw.Align(
+                alignment: pw.Alignment.centerLeft,
+                child: pw.Text(
+                  order.device!.accessories!.join(', '),
+                  style: const pw.TextStyle(fontSize: 7),
+                ),
+              ),
+            ],
+            pw.Divider(),
+            pw.Align(
+              alignment: pw.Alignment.centerLeft,
+              child: pw.Text(
+                'PROBLEMA',
+                style: pw.TextStyle(
+                  fontSize: 8,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+            ),
+            pw.Align(
+              alignment: pw.Alignment.centerLeft,
+              child: pw.Text(
+                order.problemReported,
+                style: const pw.TextStyle(fontSize: 7),
+              ),
+            ),
+            pw.SizedBox(height: 14),
+            pw.Divider(color: PdfColors.grey400),
+            pw.SizedBox(height: 4),
+            pw.Text(
+              'Desarrollado por Baudity',
+              style: pw.TextStyle(fontSize: 6, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.Text(
+              'Contacto: 3138448436',
+              style: const pw.TextStyle(fontSize: 6),
+            ),
+            pw.SizedBox(height: 10),
           ],
-          pw.Divider(),
-          pw.Align(alignment: pw.Alignment.centerLeft,
-            child: pw.Text('PROBLEMA',
-                style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold))),
-          pw.Align(alignment: pw.Alignment.centerLeft,
-            child: pw.Text(order.problemReported, style: const pw.TextStyle(fontSize: 7))),
-          pw.SizedBox(height: 14),
-          pw.Divider(color: PdfColors.grey400),
-          pw.SizedBox(height: 4),
-          pw.Text('Desarrollado por Baudity',
-              style: pw.TextStyle(fontSize: 6, fontWeight: pw.FontWeight.bold)),
-          pw.Text('Contacto: 3138448436',
-              style: const pw.TextStyle(fontSize: 6)),
-          pw.SizedBox(height: 10),
-        ],
+        ),
       ),
-    ));
+    );
     return pdf.save();
   }
 
@@ -369,17 +464,22 @@ class TicketPrinterService {
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
         pw.Text('$label:', style: const pw.TextStyle(fontSize: 8)),
-        pw.Text(value, style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+        pw.Text(
+          value,
+          style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold),
+        ),
       ],
     ),
   );
-
 
   // ==========================================
   //  ESC/POS (for TCP thermal printers only)
   // ==========================================
 
-  Uint8List generateTicketEscPos({required ServiceOrder order, required Tenant tenant}) {
+  Uint8List generateTicketEscPos({
+    required ServiceOrder order,
+    required Tenant tenant,
+  }) {
     final gen = EscPosGenerator();
     gen.setAlign(1);
     gen.setBold(true);
@@ -408,23 +508,33 @@ class TicketPrinterService {
     gen.setAlign(0);
     gen.printTwoColumns('Fecha:', AppDateUtils.format(order.createdAt));
     gen.printSeparator();
-    gen.setBold(true); gen.printLine('DATOS DEL CLIENTE'); gen.setBold(false);
+    gen.setBold(true);
+    gen.printLine('DATOS DEL CLIENTE');
+    gen.setBold(false);
     gen.printTwoColumns('Nombre:', _s(order.customer?.fullName ?? '-'));
     gen.printTwoColumns('Cedula:', order.customer?.idNumber ?? '-');
     gen.printTwoColumns('Tel:', order.customer?.phone ?? '-');
     gen.printSeparator();
-    gen.setBold(true); gen.printLine('DATOS DEL EQUIPO'); gen.setBold(false);
+    gen.setBold(true);
+    gen.printLine('DATOS DEL EQUIPO');
+    gen.setBold(false);
     gen.printTwoColumns('Tipo:', _s(order.device?.type ?? '-'));
     gen.printTwoColumns('Marca:', _s(order.device?.brand ?? '-'));
     gen.printTwoColumns('Modelo:', _s(order.device?.model ?? '-'));
-    if (order.device?.serial != null) gen.printTwoColumns('Serial:', order.device!.serial!);
-    if (order.device?.accessories != null && order.device!.accessories!.isNotEmpty) {
+    if (order.device?.serial != null)
+      gen.printTwoColumns('Serial:', order.device!.serial!);
+    if (order.device?.accessories != null &&
+        order.device!.accessories!.isNotEmpty) {
       gen.printSeparator();
-      gen.setBold(true); gen.printLine('ACCESORIOS ENTREGADOS'); gen.setBold(false);
+      gen.setBold(true);
+      gen.printLine('ACCESORIOS');
+      gen.setBold(false);
       gen.printLine(_s(order.device!.accessories!.join(', ')));
     }
     gen.printSeparator();
-    gen.setBold(true); gen.printLine('PROBLEMA'); gen.setBold(false);
+    gen.setBold(true);
+    gen.printLine('PROBLEMA');
+    gen.setBold(false);
     for (final l in _w(_s(order.problemReported), 48)) gen.printLine(l);
     gen.feed(2);
     gen.printSeparator(char: '.', length: 48);
@@ -452,17 +562,32 @@ class TicketPrinterService {
   }
 
   String _s(String t) => t
-      .replaceAll('á','a').replaceAll('é','e').replaceAll('í','i')
-      .replaceAll('ó','o').replaceAll('ú','u').replaceAll('ñ','n')
-      .replaceAll('Á','A').replaceAll('É','E').replaceAll('Í','I')
-      .replaceAll('Ó','O').replaceAll('Ú','U').replaceAll('Ñ','N');
+      .replaceAll('á', 'a')
+      .replaceAll('é', 'e')
+      .replaceAll('í', 'i')
+      .replaceAll('ó', 'o')
+      .replaceAll('ú', 'u')
+      .replaceAll('ñ', 'n')
+      .replaceAll('Á', 'A')
+      .replaceAll('É', 'E')
+      .replaceAll('Í', 'I')
+      .replaceAll('Ó', 'O')
+      .replaceAll('Ú', 'U')
+      .replaceAll('Ñ', 'N');
 
   List<String> _w(String t, int m) {
-    final w = t.split(' '); final l = <String>[]; var c = '';
+    final w = t.split(' ');
+    final l = <String>[];
+    var c = '';
     for (final x in w) {
-      if (c.isEmpty) { c = x; }
-      else if (c.length+1+x.length <= m) { c += ' $x'; }
-      else { l.add(c); c = x; }
+      if (c.isEmpty) {
+        c = x;
+      } else if (c.length + 1 + x.length <= m) {
+        c += ' $x';
+      } else {
+        l.add(c);
+        c = x;
+      }
     }
     if (c.isNotEmpty) l.add(c);
     return l;
@@ -473,19 +598,30 @@ class TicketPrinterService {
   // ==========================================
 
   Future<void> _saveConfig({
-    required String type, String? host, int? port, String? name, String? systemUrl,
+    required String type,
+    String? host,
+    int? port,
+    String? name,
+    String? systemUrl,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('printer_type', type);
     if (name != null) await prefs.setString('printer_name', name);
     if (host != null) await prefs.setString('printer_host', host);
     if (port != null) await prefs.setInt('printer_port', port);
-    if (systemUrl != null) await prefs.setString('printer_system_url', systemUrl);
+    if (systemUrl != null)
+      await prefs.setString('printer_system_url', systemUrl);
   }
 
   Future<void> _clearConfig() async {
     final prefs = await SharedPreferences.getInstance();
-    for (final k in ['printer_type','printer_host','printer_port','printer_name','printer_system_url']) {
+    for (final k in [
+      'printer_type',
+      'printer_host',
+      'printer_port',
+      'printer_name',
+      'printer_system_url',
+    ]) {
       await prefs.remove(k);
     }
   }

@@ -220,7 +220,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         else if (_selectedBrand == null) error = 'Seleccione la marca';
         else if (_deviceModelCtrl.text.trim().isEmpty) error = 'Ingrese el modelo';
         else if (_deviceSerialCtrl.text.trim().isEmpty) error = 'Ingrese el serial / IMEI';
-        else if (_accessoriesCtrl.text.trim().isEmpty) error = 'Ingrese los accesorios entregados';
+        else if (_accessoriesCtrl.text.trim().isEmpty) error = 'Ingrese los accesorios';
         break;
       case 2: // Photos - optional, always valid
         break;
@@ -792,7 +792,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         _field(_deviceColorCtrl, 'Color (opcional)'),
         _field(
           _accessoriesCtrl,
-          'Accesorios entregados *',
+          'Accesorios *',
           required: true,
           hint: 'Cargador, Funda, Audifonos',
         ),

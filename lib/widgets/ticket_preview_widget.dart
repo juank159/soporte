@@ -60,27 +60,39 @@ class TicketPreviewWidget extends StatelessWidget {
           else if (tenant.logoUrl != null && tenant.logoUrl!.startsWith('http'))
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: Image.network(tenant.logoUrl!, height: 50,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+              child: Image.network(
+                tenant.logoUrl!,
+                height: 50,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
             ),
 
           // Header - Tenant info
           Text(
             tenant.name,
             style: const TextStyle(
-                fontSize: 18, fontWeight: FontWeight.w900, color: _black),
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: _black,
+            ),
             textAlign: TextAlign.center,
           ),
           if (tenant.nit != null && tenant.nit!.isNotEmpty)
-            Text('NIT: ${tenant.nit}',
-                style: const TextStyle(fontSize: 11, color: _grey)),
+            Text(
+              'NIT: ${tenant.nit}',
+              style: const TextStyle(fontSize: 11, color: _grey),
+            ),
           if (tenant.address != null && tenant.address!.isNotEmpty)
-            Text(tenant.address!,
-                style: const TextStyle(fontSize: 10, color: _grey),
-                textAlign: TextAlign.center),
+            Text(
+              tenant.address!,
+              style: const TextStyle(fontSize: 10, color: _grey),
+              textAlign: TextAlign.center,
+            ),
           if (tenant.phone != null && tenant.phone!.isNotEmpty)
-            Text('Tel: ${tenant.phone}',
-                style: const TextStyle(fontSize: 10, color: _grey)),
+            Text(
+              'Tel: ${tenant.phone}',
+              style: const TextStyle(fontSize: 10, color: _grey),
+            ),
 
           const Divider(thickness: 2, color: _black, height: 16),
 
@@ -88,14 +100,20 @@ class TicketPreviewWidget extends StatelessWidget {
           Text(
             order.orderNumber,
             style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                color: _black,
-                letterSpacing: 1),
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              color: _black,
+              letterSpacing: 1,
+            ),
           ),
-          const Text('ORDEN DE SERVICIO',
-              style: TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.w600, color: _grey)),
+          const Text(
+            'ORDEN DE SERVICIO',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: _grey,
+            ),
+          ),
           const SizedBox(height: 10),
 
           // QR Code
@@ -105,15 +123,27 @@ class TicketPreviewWidget extends StatelessWidget {
             size: 130,
             backgroundColor: Colors.white,
             eyeStyle: const QrEyeStyle(
-                eyeShape: QrEyeShape.square, color: _black),
+              eyeShape: QrEyeShape.square,
+              color: _black,
+            ),
             dataModuleStyle: const QrDataModuleStyle(
-                dataModuleShape: QrDataModuleShape.square, color: _black),
+              dataModuleShape: QrDataModuleShape.square,
+              color: _black,
+            ),
           ),
           const SizedBox(height: 6),
-          const Text('Consulta el estado de tu equipo',
-              style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: _black)),
-          const Text('escaneando este codigo QR',
-              style: TextStyle(fontSize: 8, color: _grey)),
+          const Text(
+            'Consulta el estado de tu equipo',
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              color: _black,
+            ),
+          ),
+          const Text(
+            'escaneando este codigo QR',
+            style: TextStyle(fontSize: 8, color: _grey),
+          ),
           const SizedBox(height: 8),
 
           const Divider(color: _grey, height: 8),
@@ -130,14 +160,15 @@ class TicketPreviewWidget extends StatelessWidget {
           _row('Tipo:', order.device?.type ?? '-'),
           _row('Marca:', order.device?.brand ?? '-'),
           _row('Modelo:', order.device?.model ?? '-'),
-          if (order.device?.serial != null) _row('Serial:', order.device!.serial!),
+          if (order.device?.serial != null)
+            _row('Serial:', order.device!.serial!),
           if (order.device?.color != null) _row('Color:', order.device!.color!),
           if (technicianName != null && technicianName!.isNotEmpty)
             _row('Tecnico:', technicianName!),
 
           if (order.device?.accessories != null &&
               order.device!.accessories!.isNotEmpty) ...[
-            _sectionTitle('ACCESORIOS ENTREGADOS'),
+            _sectionTitle('ACCESORIOS'),
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
@@ -150,23 +181,35 @@ class TicketPreviewWidget extends StatelessWidget {
           _sectionTitle('PROBLEMA'),
           Align(
             alignment: Alignment.centerLeft,
-            child: Text(order.problemReported,
-                style: const TextStyle(fontSize: 10, color: _black)),
+            child: Text(
+              order.problemReported,
+              style: const TextStyle(fontSize: 10, color: _black),
+            ),
           ),
 
           if (tenant.legalNotice != null && tenant.legalNotice!.isNotEmpty) ...[
             const Divider(color: _grey, height: 16),
-            Text(tenant.legalNotice!,
-                style: const TextStyle(fontSize: 8, color: _lightGrey),
-                textAlign: TextAlign.center),
+            Text(
+              tenant.legalNotice!,
+              style: const TextStyle(fontSize: 8, color: _lightGrey),
+              textAlign: TextAlign.center,
+            ),
           ],
           const SizedBox(height: 10),
           const Divider(color: _lightGrey),
           const SizedBox(height: 4),
-          const Text('Desarrollado por Baudity',
-              style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: _grey)),
-          const Text('Contacto: 3138448436',
-              style: TextStyle(fontSize: 7, color: _lightGrey)),
+          const Text(
+            'Desarrollado por Baudity',
+            style: TextStyle(
+              fontSize: 8,
+              fontWeight: FontWeight.w700,
+              color: _grey,
+            ),
+          ),
+          const Text(
+            'Contacto: 3138448436',
+            style: TextStyle(fontSize: 7, color: _lightGrey),
+          ),
           const SizedBox(height: 8),
         ],
       ),
@@ -178,11 +221,14 @@ class TicketPreviewWidget extends StatelessWidget {
       padding: const EdgeInsets.only(top: 6, bottom: 2),
       child: Align(
         alignment: Alignment.centerLeft,
-        child: Text(title,
-            style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: _black)),
+        child: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: _black,
+          ),
+        ),
       ),
     );
   }
@@ -193,17 +239,20 @@ class TicketPreviewWidget extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: const TextStyle(fontSize: 10, color: _grey)),
+          Text(label, style: const TextStyle(fontSize: 10, color: _grey)),
           Flexible(
-            child: Text(value,
-                style: const TextStyle(
-                    fontSize: 10, color: _black, fontWeight: FontWeight.w500),
-                textAlign: TextAlign.right),
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 10,
+                color: _black,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.right,
+            ),
           ),
         ],
       ),
     );
   }
-
 }
