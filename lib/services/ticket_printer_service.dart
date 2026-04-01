@@ -335,8 +335,14 @@ class TicketPrinterService {
           _pdfRow('Marca', order.device?.brand ?? '-'),
           _pdfRow('Modelo', order.device?.model ?? '-'),
           if (order.device?.serial != null) _pdfRow('Serial', order.device!.serial!),
-          if (order.device?.accessories != null && order.device!.accessories!.isNotEmpty)
-            _pdfRow('Accesorios', order.device!.accessories!.join(', ')),
+          if (order.device?.accessories != null && order.device!.accessories!.isNotEmpty) ...[
+            pw.Divider(),
+            pw.Align(alignment: pw.Alignment.centerLeft,
+              child: pw.Text('ACCESORIOS ENTREGADOS',
+                  style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold))),
+            pw.Align(alignment: pw.Alignment.centerLeft,
+              child: pw.Text(order.device!.accessories!.join(', '), style: const pw.TextStyle(fontSize: 7))),
+          ],
           pw.Divider(),
           pw.Align(alignment: pw.Alignment.centerLeft,
             child: pw.Text('PROBLEMA',
@@ -412,8 +418,11 @@ class TicketPrinterService {
     gen.printTwoColumns('Marca:', _s(order.device?.brand ?? '-'));
     gen.printTwoColumns('Modelo:', _s(order.device?.model ?? '-'));
     if (order.device?.serial != null) gen.printTwoColumns('Serial:', order.device!.serial!);
-    if (order.device?.accessories != null && order.device!.accessories!.isNotEmpty)
-      gen.printTwoColumns('Accesorios:', _s(order.device!.accessories!.join(', ')));
+    if (order.device?.accessories != null && order.device!.accessories!.isNotEmpty) {
+      gen.printSeparator();
+      gen.setBold(true); gen.printLine('ACCESORIOS ENTREGADOS'); gen.setBold(false);
+      gen.printLine(_s(order.device!.accessories!.join(', ')));
+    }
     gen.printSeparator();
     gen.setBold(true); gen.printLine('PROBLEMA'); gen.setBold(false);
     for (final l in _w(_s(order.problemReported), 48)) gen.printLine(l);

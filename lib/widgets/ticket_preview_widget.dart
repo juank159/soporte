@@ -132,18 +132,20 @@ class TicketPreviewWidget extends StatelessWidget {
           _row('Modelo:', order.device?.model ?? '-'),
           if (order.device?.serial != null) _row('Serial:', order.device!.serial!),
           if (order.device?.color != null) _row('Color:', order.device!.color!),
+          if (technicianName != null && technicianName!.isNotEmpty)
+            _row('Tecnico:', technicianName!),
+
           if (order.device?.accessories != null &&
-              order.device!.accessories!.isNotEmpty)
+              order.device!.accessories!.isNotEmpty) ...[
+            _sectionTitle('ACCESORIOS ENTREGADOS'),
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Accesorios: ${order.device!.accessories!.join(', ')}',
+                order.device!.accessories!.join(', '),
                 style: const TextStyle(fontSize: 10, color: _black),
               ),
             ),
-
-          if (technicianName != null && technicianName!.isNotEmpty)
-            _row('Tecnico:', technicianName!),
+          ],
 
           _sectionTitle('PROBLEMA'),
           Align(
