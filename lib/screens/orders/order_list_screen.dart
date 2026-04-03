@@ -120,102 +120,211 @@ class _OrderListScreenState extends State<OrderListScreen> {
     ('closed', 'Cerrados', Icons.lock_rounded),
   ];
 
-  @override
-  Widget build(BuildContext context) {
+  void _showFilterDialog() {
     final now = DateTime.now();
     final todayStr = _fmt(now);
     final weekAgo = _fmt(now.subtract(const Duration(days: 7)));
     final monthStart = _fmt(DateTime(now.year, now.month, 1));
 
-    return Column(
-      children: [
-        // Search
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: TextField(
-            controller: _searchCtrl,
-            style: const TextStyle(color: AppTheme.textPrimary),
-            decoration: InputDecoration(
-              hintText: 'Buscar orden, cliente, equipo...',
-              prefixIcon: const Icon(Icons.search_rounded),
-              suffixIcon: _searchCtrl.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear_rounded, size: 18),
-                      onPressed: () {
-                        _searchCtrl.clear();
-                        _loadOrders();
-                      },
-                    )
-                  : null,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            ),
-            onChanged: (v) {
-              setState(() {});
-              _onSearchChanged(v);
-            },
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.surfaceColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle bar
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: AppTheme.textSecondary.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('Filtros',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700,
+                      color: AppTheme.textPrimary)),
+              const SizedBox(height: 16),
+
+              // Date section
+              const Text('Periodo',
+                  style: TextStyle(color: AppTheme.accentCyan, fontSize: 13,
+                      fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                _filterOption('Todas', _dateLabel == 'Todas', () {
+                  _setDateFilter('Todas', null, null);
+                  Navigator.pop(ctx);
+                }),
+                _filterOption('Hoy', _dateLabel == 'Hoy', () {
+                  _setDateFilter('Hoy', todayStr, todayStr);
+                  Navigator.pop(ctx);
+                }),
+                _filterOption('Semana', _dateLabel == 'Esta semana', () {
+                  _setDateFilter('Esta semana', weekAgo, todayStr);
+                  Navigator.pop(ctx);
+                }),
+                _filterOption('Mes', _dateLabel == 'Este mes', () {
+                  _setDateFilter('Este mes', monthStart, todayStr);
+                  Navigator.pop(ctx);
+                }),
+                _filterOption('Rango', _dateLabel != 'Todas' &&
+                    _dateLabel != 'Hoy' && _dateLabel != 'Esta semana' &&
+                    _dateLabel != 'Este mes', () {
+                  Navigator.pop(ctx);
+                  _showDatePicker();
+                }),
+              ]),
+              const SizedBox(height: 16),
+
+              // Status section
+              const Text('Estado',
+                  style: TextStyle(color: AppTheme.accentPurple, fontSize: 13,
+                      fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                ..._statusOptions.map((s) {
+                  final (value, label, icon) = s;
+                  return _filterOption(label, _statusFilter == value, () {
+                    _onFilterChanged(value);
+                    Navigator.pop(ctx);
+                  });
+                }),
+              ]),
+              const SizedBox(height: 16),
+            ],
           ),
         ),
+      ),
+    );
+  }
 
-        // Date filters
-        SizedBox(
-          height: 42,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+  Widget _filterOption(String label, bool selected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppTheme.accentCyan.withValues(alpha: 0.15)
+              : AppTheme.cardColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected
+                ? AppTheme.accentCyan
+                : AppTheme.dividerColor,
+          ),
+        ),
+        child: Text(label,
+            style: TextStyle(
+              color: selected ? AppTheme.accentCyan : AppTheme.textPrimary,
+              fontSize: 13,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.normal,
+            )),
+      ),
+    );
+  }
+
+  String get _activeFiltersLabel {
+    final parts = <String>[];
+    if (_dateLabel != 'Todas') parts.add(_dateLabel);
+    if (_statusFilter != null) {
+      final match = _statusOptions.where((s) => s.$1 == _statusFilter).firstOrNull;
+      if (match != null) parts.add(match.$2);
+    }
+    return parts.isEmpty ? 'Sin filtros' : parts.join(' | ');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Search + Filter button
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Row(
             children: [
-              _dateChip('Todas', null, null),
-              _dateChip('Hoy', todayStr, todayStr),
-              _dateChip('Esta semana', weekAgo, todayStr),
-              _dateChip('Este mes', monthStart, todayStr),
-              Padding(
-                padding: const EdgeInsets.only(left: 4),
-                child: ActionChip(
-                  avatar: const Icon(Icons.date_range_rounded,
-                      size: 14, color: AppTheme.accentPurple),
-                  label: Text(
-                    _dateFrom != null &&
-                            !['Todas', 'Hoy', 'Esta semana', 'Este mes']
-                                .contains(_dateLabel)
-                        ? _dateLabel
-                        : 'Rango',
-                    style: const TextStyle(fontSize: 12),
+              Expanded(
+                child: TextField(
+                  controller: _searchCtrl,
+                  style: const TextStyle(color: AppTheme.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'Buscar orden, cliente, equipo...',
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    suffixIcon: _searchCtrl.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded, size: 18),
+                            onPressed: () { _searchCtrl.clear(); _loadOrders(); },
+                          )
+                        : null,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
-                  onPressed: _showDatePicker,
+                  onChanged: (v) { setState(() {}); _onSearchChanged(v); },
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Filter button
+              GestureDetector(
+                onTap: _showFilterDialog,
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: (_statusFilter != null || _dateLabel != 'Todas')
+                        ? AppTheme.accentCyan.withValues(alpha: 0.15)
+                        : AppTheme.cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: (_statusFilter != null || _dateLabel != 'Todas')
+                          ? AppTheme.accentCyan
+                          : AppTheme.dividerColor,
+                    ),
+                  ),
+                  child: Icon(Icons.tune_rounded,
+                      color: (_statusFilter != null || _dateLabel != 'Todas')
+                          ? AppTheme.accentCyan
+                          : AppTheme.textSecondary,
+                      size: 22),
                 ),
               ),
             ],
           ),
         ),
 
-        // Status filters
-        SizedBox(
-          height: 42,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            itemCount: _statusOptions.length,
-            itemBuilder: (context, i) {
-              final (value, label, icon) = _statusOptions[i];
-              final selected = _statusFilter == value;
-              return Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: FilterChip(
-                  avatar: Icon(icon,
-                      size: 14,
-                      color: selected
-                          ? AppTheme.accentCyan
-                          : AppTheme.textSecondary),
-                  label: Text(label, style: const TextStyle(fontSize: 11)),
-                  selected: selected,
-                  onSelected: (_) => _onFilterChanged(value),
-                  visualDensity: VisualDensity.compact,
+        // Active filters indicator
+        if (_statusFilter != null || _dateLabel != 'Todas')
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: Row(
+              children: [
+                const Icon(Icons.filter_list_rounded,
+                    size: 14, color: AppTheme.accentCyan),
+                const SizedBox(width: 6),
+                Text(_activeFiltersLabel,
+                    style: const TextStyle(
+                        color: AppTheme.accentCyan, fontSize: 12)),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () {
+                    _setDateFilter('Todas', null, null);
+                    _onFilterChanged(null);
+                  },
+                  child: const Text('Limpiar',
+                      style: TextStyle(
+                          color: AppTheme.textSecondary, fontSize: 11)),
                 ),
-              );
-            },
+              ],
+            ),
           ),
-        ),
-
         // List
         Expanded(
           child: BlocBuilder<OrdersBloc, OrdersState>(
@@ -369,25 +478,4 @@ class _OrderListScreenState extends State<OrderListScreen> {
     );
   }
 
-  Widget _dateChip(String label, String? from, String? to) {
-    final selected = _dateLabel == label;
-    return Padding(
-      padding: const EdgeInsets.only(right: 6),
-      child: FilterChip(
-        avatar: Icon(
-          label == 'Todas'
-              ? Icons.all_inclusive_rounded
-              : label == 'Hoy'
-                  ? Icons.today_rounded
-                  : Icons.calendar_today_rounded,
-          size: 14,
-          color: selected ? AppTheme.accentCyan : AppTheme.textSecondary,
-        ),
-        label: Text(label, style: const TextStyle(fontSize: 11)),
-        selected: selected,
-        onSelected: (_) => _setDateFilter(label, from, to),
-        visualDensity: VisualDensity.compact,
-      ),
-    );
-  }
 }
