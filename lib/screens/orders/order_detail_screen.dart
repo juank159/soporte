@@ -232,7 +232,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         child: GestureDetector(
           onTap: () => Navigator.pop(ctx),
           child: InteractiveViewer(
-            child: Image.network(url),
+            child: Image.network(url,
+              errorBuilder: (_, __, ___) => Center(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.broken_image_rounded, size: 48, color: AppTheme.textSecondary),
+                  const SizedBox(height: 8),
+                  Text('Imagen no disponible', style: TextStyle(color: AppTheme.textSecondary)),
+                ]),
+              ),
+            ),
           ),
         ),
       ),
