@@ -279,44 +279,44 @@ class _DashboardScreenState extends State<DashboardScreen>
               // Solo admin ve configuraciones
               if (_isAdmin) {
                 items.addAll([
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'subscription',
                     child: Row(children: [
-                      Icon(Icons.workspace_premium_rounded, size: 18),
-                      SizedBox(width: 10),
-                      Text('Suscripcion'),
+                      Icon(Icons.workspace_premium_rounded, size: 18, color: AppTheme.accentCyan),
+                      const SizedBox(width: 10),
+                      Text('Suscripcion', style: TextStyle(color: AppTheme.textPrimary)),
                     ]),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'tenant',
                     child: Row(children: [
-                      Icon(Icons.business_rounded, size: 18),
-                      SizedBox(width: 10),
-                      Text('Mi negocio'),
+                      Icon(Icons.business_rounded, size: 18, color: AppTheme.accentBlue),
+                      const SizedBox(width: 10),
+                      Text('Mi negocio', style: TextStyle(color: AppTheme.textPrimary)),
                     ]),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'users',
                     child: Row(children: [
-                      Icon(Icons.group_rounded, size: 18),
-                      SizedBox(width: 10),
-                      Text('Usuarios y tecnicos'),
+                      Icon(Icons.group_rounded, size: 18, color: AppTheme.accentPurple),
+                      const SizedBox(width: 10),
+                      Text('Usuarios y tecnicos', style: TextStyle(color: AppTheme.textPrimary)),
                     ]),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'catalog',
                     child: Row(children: [
-                      Icon(Icons.devices_rounded, size: 18),
-                      SizedBox(width: 10),
-                      Text('Catalogo equipos'),
+                      Icon(Icons.devices_rounded, size: 18, color: AppTheme.accentOrange),
+                      const SizedBox(width: 10),
+                      Text('Catalogo equipos', style: TextStyle(color: AppTheme.textPrimary)),
                     ]),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'printer',
                     child: Row(children: [
-                      Icon(Icons.print_rounded, size: 18),
-                      SizedBox(width: 10),
-                      Text('Impresora'),
+                      Icon(Icons.print_rounded, size: 18, color: AppTheme.accentGreen),
+                      const SizedBox(width: 10),
+                      Text('Impresora', style: TextStyle(color: AppTheme.textPrimary)),
                     ]),
                   ),
                   const PopupMenuDivider(),
@@ -328,11 +328,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                 child: Row(children: [
                   Icon(context.read<ThemeCubit>().isDark
                       ? Icons.light_mode_rounded
-                      : Icons.dark_mode_rounded, size: 18),
+                      : Icons.dark_mode_rounded, size: 18, color: AppTheme.accentOrange),
                   const SizedBox(width: 10),
                   Text(context.read<ThemeCubit>().isDark
                       ? 'Tema claro'
-                      : 'Tema oscuro'),
+                      : 'Tema oscuro', style: TextStyle(color: AppTheme.textPrimary)),
                 ]),
               ));
               items.add(const PopupMenuDivider());

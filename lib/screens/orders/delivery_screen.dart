@@ -706,14 +706,18 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
           ),
         ),
         Expanded(
-          child: PdfPreview(
-            build: (_) async => _generatedPdf!,
-            canChangeOrientation: false,
-            canChangePageFormat: false,
-            canDebug: false,
-            allowPrinting: false,
-            allowSharing: false,
-            pdfFileName: 'Acta_${widget.order.orderNumber}.pdf',
+          child: InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: PdfPreview(
+              build: (_) async => _generatedPdf!,
+              canChangeOrientation: false,
+              canChangePageFormat: false,
+              canDebug: false,
+              allowPrinting: false,
+              allowSharing: false,
+              pdfFileName: 'Acta_${widget.order.orderNumber}.pdf',
+            ),
           ),
         ),
       ],

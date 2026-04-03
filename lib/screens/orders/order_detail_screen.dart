@@ -439,23 +439,23 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               final items = <PopupMenuEntry<String>>[];
               // Reimprimir ticket (solo si no está cerrada)
               if (_order.status != 'closed') {
-                items.add(const PopupMenuItem(
+                items.add(PopupMenuItem(
                   value: 'print_ticket',
                   child: Row(children: [
-                    Icon(Icons.receipt_long_rounded, size: 18),
-                    SizedBox(width: 10),
-                    Text('Reimprimir ticket'),
+                    Icon(Icons.receipt_long_rounded, size: 18, color: AppTheme.accentCyan),
+                    const SizedBox(width: 10),
+                    Text('Reimprimir ticket', style: TextStyle(color: AppTheme.textPrimary)),
                   ]),
                 ));
               }
               // Reimprimir acta (solo si está entregada o cerrada)
               if (_order.status == 'delivered' || _order.status == 'closed') {
-                items.add(const PopupMenuItem(
+                items.add(PopupMenuItem(
                   value: 'print_acta',
                   child: Row(children: [
-                    Icon(Icons.picture_as_pdf_rounded, size: 18),
-                    SizedBox(width: 10),
-                    Text('Reimprimir acta de entrega'),
+                    Icon(Icons.picture_as_pdf_rounded, size: 18, color: AppTheme.accentRed),
+                    const SizedBox(width: 10),
+                    Text('Reimprimir acta de entrega', style: TextStyle(color: AppTheme.textPrimary)),
                   ]),
                 ));
               }
@@ -1205,16 +1205,20 @@ class _ActaPreviewScreen extends StatelessWidget {
                 ],
               ),
             ),
-            // PDF Preview
+            // PDF Preview with zoom
             Expanded(
-              child: printing_lib.PdfPreview(
-                build: (_) async => pdfBytes,
-                canChangeOrientation: false,
-                canChangePageFormat: false,
-                canDebug: false,
-                allowPrinting: false, // We handle printing ourselves
+              child: InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: printing_lib.PdfPreview(
+                  build: (_) async => pdfBytes,
+                  canChangeOrientation: false,
+                  canChangePageFormat: false,
+                  canDebug: false,
+                  allowPrinting: false,
                 allowSharing: false,
                 pdfFileName: 'Acta_$orderNumber.pdf',
+              ),
               ),
             ),
           ],
