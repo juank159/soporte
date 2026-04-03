@@ -175,4 +175,70 @@ class AppTheme {
           const ProgressIndicatorThemeData(color: accentCyan),
     );
   }
+
+  static ThemeData get lightTheme {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: const Color(0xFFF5F7FA),
+      colorScheme: ColorScheme.light(
+        primary: accentBlue,
+        secondary: accentCyan,
+        surface: Colors.white,
+        error: accentRed,
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: accentBlue,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: false,
+        titleTextStyle: const TextStyle(
+          color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: accentBlue,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      cardTheme: CardThemeData(
+        color: Colors.white,
+        elevation: 1,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300)),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: accentBlue, width: 2)),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: accentBlue,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: Colors.white,
+        indicatorColor: accentBlue.withValues(alpha: 0.15),
+      ),
+      navigationRailTheme: NavigationRailThemeData(
+        backgroundColor: Colors.white,
+        indicatorColor: accentBlue.withValues(alpha: 0.15),
+        selectedIconTheme: IconThemeData(color: accentBlue),
+        selectedLabelTextStyle: TextStyle(color: accentBlue, fontWeight: FontWeight.w600),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(color: accentBlue),
+    );
+  }
 }

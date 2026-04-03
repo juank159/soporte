@@ -16,6 +16,7 @@ import '../settings/users_management_screen.dart';
 import '../settings/tenant_settings_screen.dart';
 import '../settings/subscription_screen.dart';
 import '../../widgets/sync_status_widget.dart';
+import '../../blocs/theme/theme_cubit.dart';
 import '../reports/reports_screen.dart';
 import '../orders/order_detail_screen.dart';
 
@@ -47,6 +48,52 @@ class _DashboardScreenState extends State<DashboardScreen>
   void dispose() {
     _fabController.dispose();
     super.dispose();
+  }
+
+  void _showQuickSearch() {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(children: [
+          Icon(Icons.search_rounded, color: AppTheme.accentCyan),
+          SizedBox(width: 10),
+          Text('Buscar orden', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
+        ]),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          style: const TextStyle(color: AppTheme.textPrimary),
+          decoration: const InputDecoration(
+            hintText: 'Numero de orden, cliente o serial...',
+            prefixIcon: Icon(Icons.tag_rounded),
+          ),
+          onSubmitted: (v) {
+            if (v.trim().isNotEmpty) {
+              Navigator.pop(ctx);
+              // Switch to orders tab with search
+              setState(() => _currentIndex = 1);
+              context.read<OrdersBloc>().add(
+                  OrdersLoadRequested(search: v.trim()));
+            }
+          },
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () {
+              if (ctrl.text.trim().isNotEmpty) {
+                Navigator.pop(ctx);
+                setState(() => _currentIndex = 1);
+                context.read<OrdersBloc>().add(
+                    OrdersLoadRequested(search: ctrl.text.trim()));
+              }
+            },
+            child: const Text('Buscar'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _navigateToCreateOrder() {
@@ -165,6 +212,11 @@ class _DashboardScreenState extends State<DashboardScreen>
         actions: [
           const SyncStatusWidget(),
           IconButton(
+            icon: const Icon(Icons.search_rounded, size: 22),
+            tooltip: 'Buscar orden',
+            onPressed: _showQuickSearch,
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh_rounded, size: 22),
             onPressed: () =>
                 context.read<OrdersBloc>().add(OrdersLoadRequested()),
@@ -183,7 +235,9 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
             ),
             onSelected: (value) {
-              if (value == 'logout') {
+              if (value == 'theme') {
+                context.read<ThemeCubit>().toggleTheme();
+              } else if (value == 'logout') {
                 context.read<AuthBloc>().add(AuthLogoutRequested());
               } else if (value == 'printer') {
                 Navigator.push(context,
@@ -269,6 +323,19 @@ class _DashboardScreenState extends State<DashboardScreen>
                 ]);
               }
 
+              items.add(PopupMenuItem(
+                value: 'theme',
+                child: Row(children: [
+                  Icon(context.read<ThemeCubit>().isDark
+                      ? Icons.light_mode_rounded
+                      : Icons.dark_mode_rounded, size: 18),
+                  const SizedBox(width: 10),
+                  Text(context.read<ThemeCubit>().isDark
+                      ? 'Tema claro'
+                      : 'Tema oscuro'),
+                ]),
+              ));
+              items.add(const PopupMenuDivider());
               items.add(const PopupMenuItem(
                 value: 'logout',
                 child: Row(children: [

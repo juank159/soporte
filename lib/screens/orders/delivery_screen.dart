@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../config/format_utils.dart';
 import '../../models/service_order.dart';
 import '../../models/tenant.dart';
@@ -47,6 +50,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
   bool _loadingTechnicians = true;
 
   bool _generating = false;
+  File? _deliveryPhoto;
   Uint8List? _generatedPdf;
   bool _statusUpdated = false;
 
@@ -186,6 +190,19 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
 
       final clientName = _clientNameCtrl.text.trim();
       final techName = _assignedTechnician!.fullName;
+
+      // Upload delivery photo if taken
+      if (_deliveryPhoto != null) {
+        try {
+          final bytes = await _deliveryPhoto!.readAsBytes();
+          final b64 = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+          await _api.dio.post('/orders/${widget.order.id}/photos', data: {
+            'photoUrl': b64,
+            'description': 'Foto de entrega',
+            'stage': 'delivery',
+          });
+        } catch (_) {}
+      }
 
       // Save signatures to backend for future reprints
       try {
@@ -505,6 +522,77 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                 ],
               ),
             ),
+
+          // ===== DELIVERY PHOTO (optional) =====
+          GlassCard(
+            borderColor: AppTheme.accentOrange.withValues(alpha: 0.3),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(children: [
+                  Icon(Icons.camera_alt_rounded,
+                      color: AppTheme.accentOrange, size: 18),
+                  SizedBox(width: 8),
+                  Text('Foto de entrega (opcional)',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.accentOrange,
+                          fontSize: 14)),
+                ]),
+                const SizedBox(height: 10),
+                if (_deliveryPhoto != null)
+                  Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.file(_deliveryPhoto!,
+                            height: 120, width: double.infinity,
+                            fit: BoxFit.cover),
+                      ),
+                      Positioned(
+                        top: 4, right: 4,
+                        child: GestureDetector(
+                          onTap: () => setState(() => _deliveryPhoto = null),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                                color: AppTheme.accentRed,
+                                shape: BoxShape.circle),
+                            child: const Icon(Icons.close,
+                                color: Colors.white, size: 16),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final isDesktop = !kIsWeb &&
+                            (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
+                        final picker = ImagePicker();
+                        try {
+                          final img = await picker.pickImage(
+                            source: isDesktop
+                                ? ImageSource.gallery
+                                : ImageSource.camera,
+                            imageQuality: 80,
+                            maxWidth: 1280,
+                          );
+                          if (img != null) {
+                            setState(() => _deliveryPhoto = File(img.path));
+                          }
+                        } catch (_) {}
+                      },
+                      icon: const Icon(Icons.add_a_photo_rounded, size: 18),
+                      label: const Text('Tomar foto del equipo'),
+                    ),
+                  ),
+              ],
+            ),
+          ),
 
           const SizedBox(height: 8),
 
