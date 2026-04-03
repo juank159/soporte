@@ -2,10 +2,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/orders/orders_bloc.dart';
+import '../../models/service_order.dart';
 import '../../config/theme.dart';
 import '../../config/format_utils.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/date_range_picker.dart';
+import '../../services/orders_pdf_service.dart';
+import '../../services/api_service.dart';
+import '../../models/tenant.dart';
+import 'package:printing/printing.dart' as printing_lib;
 import '../dashboard/dashboard_screen.dart';
 import 'order_detail_screen.dart';
 
@@ -63,6 +68,36 @@ class _OrderListScreenState extends State<OrderListScreen> {
 
   String _fmt(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  Future<void> _printOrders(List<ServiceOrder> orders) async {
+    if (orders.isEmpty) return;
+
+    try {
+      // Load tenant info
+      final api = ApiService();
+      final res = await api.dio.get('/tenants/me');
+      final tenant = Tenant.fromJson(res.data);
+
+      final pdfService = OrdersPdfService();
+      final pdfBytes = await pdfService.generateOrdersReport(
+        orders: orders,
+        tenant: tenant,
+        periodLabel: _dateLabel,
+      );
+
+      await printing_lib.Printing.sharePdf(
+        bytes: pdfBytes,
+        filename: 'Ordenes_$_dateLabel.pdf',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error al generar reporte: $e'),
+          backgroundColor: AppTheme.accentRed,
+        ));
+      }
+    }
+  }
 
   Future<void> _showDatePicker() async {
     final result = await showDateRangePickerDialog(
@@ -214,7 +249,32 @@ class _OrderListScreenState extends State<OrderListScreen> {
                     ),
                   );
                 }
-                return RefreshIndicator(
+                return Column(
+                  children: [
+                    // Results header with print button
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      child: Row(
+                        children: [
+                          Text(
+                            '${state.orders.length} ordenes',
+                            style: const TextStyle(
+                                color: AppTheme.textSecondary, fontSize: 12),
+                          ),
+                          const Spacer(),
+                          TextButton.icon(
+                            onPressed: () => _printOrders(state.orders),
+                            icon: const Icon(Icons.print_rounded, size: 16),
+                            label: const Text('Imprimir', style: TextStyle(fontSize: 12)),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: RefreshIndicator(
                   color: AppTheme.accentCyan,
                   onRefresh: () async => _loadOrders(),
                   child: ListView.builder(
@@ -296,6 +356,9 @@ class _OrderListScreenState extends State<OrderListScreen> {
                       );
                     },
                   ),
+                ),
+                    ),
+                  ],
                 );
               }
               return const SizedBox.shrink();
