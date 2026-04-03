@@ -143,7 +143,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
   Future<void> _takePhoto() async {
     if (_photos.length >= _maxPhotos) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Maximo 4 fotos por orden'),
         backgroundColor: AppTheme.accentOrange,
       ));
@@ -166,16 +166,16 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           child: Wrap(
             children: [
               ListTile(
-                leading: const Icon(Icons.camera_alt_rounded,
+                leading: Icon(Icons.camera_alt_rounded,
                     color: AppTheme.accentCyan),
-                title: const Text('Tomar foto',
+                title: Text('Tomar foto',
                     style: TextStyle(color: AppTheme.textPrimary)),
                 onTap: () => Navigator.pop(ctx, ImageSource.camera),
               ),
               ListTile(
-                leading: const Icon(Icons.photo_library_rounded,
+                leading: Icon(Icons.photo_library_rounded,
                     color: AppTheme.accentPurple),
-                title: const Text('Galeria',
+                title: Text('Galeria',
                     style: TextStyle(color: AppTheme.textPrimary)),
                 onTap: () => Navigator.pop(ctx, ImageSource.gallery),
               ),
@@ -340,17 +340,17 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         backgroundColor: AppTheme.surfaceColor,
         title: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.check_circle_rounded,
               color: AppTheme.accentGreen,
               size: 28,
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Orden creada',
                     style: TextStyle(color: AppTheme.textPrimary, fontSize: 18),
                   ),
@@ -443,8 +443,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   context.read<OrdersBloc>().add(OrdersLoadRequested());
                 }
               },
-              icon: const Icon(Icons.print_rounded),
-              label: const Text('Imprimir ticket'),
+              icon: Icon(Icons.print_rounded),
+              label: Text('Imprimir ticket'),
             ),
         ],
       ),
@@ -454,7 +454,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Nueva Orden')),
+      appBar: AppBar(title: Text('Nueva Orden')),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -515,7 +515,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         TextButton(
                           onPressed: details.onStepCancel,
                           child: Text(
@@ -528,7 +528,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 },
                 steps: [
                   Step(
-                    title: const Text(
+                    title: Text(
                       'Cliente',
                       style: TextStyle(color: AppTheme.textPrimary),
                     ),
@@ -539,7 +539,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                     content: _clientStep(),
                   ),
                   Step(
-                    title: const Text(
+                    title: Text(
                       'Equipo',
                       style: TextStyle(color: AppTheme.textPrimary),
                     ),
@@ -550,7 +550,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                     content: _deviceStep(),
                   ),
                   Step(
-                    title: const Text(
+                    title: Text(
                       'Fotos',
                       style: TextStyle(color: AppTheme.textPrimary),
                     ),
@@ -561,7 +561,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                     content: _photosStep(),
                   ),
                   Step(
-                    title: const Text(
+                    title: Text(
                       'Problema',
                       style: TextStyle(color: AppTheme.textPrimary),
                     ),
@@ -593,34 +593,34 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               onSelected: (_) => setState(() => _customerMode = 0),
             ),
             ChoiceChip(
-              avatar: const Icon(Icons.person_add_rounded, size: 16),
-              label: const Text('Nuevo cliente'),
+              avatar: Icon(Icons.person_add_rounded, size: 16),
+              label: Text('Nuevo cliente'),
               selected: _customerMode == 1,
               onSelected: (_) => setState(() => _customerMode = 1),
             ),
             ChoiceChip(
-              avatar: const Icon(Icons.flash_on_rounded, size: 16),
-              label: const Text('Express'),
+              avatar: Icon(Icons.flash_on_rounded, size: 16),
+              label: Text('Express'),
               selected: _customerMode == 2,
               onSelected: (_) => setState(() => _customerMode = 2),
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
 
         // Mode 0: Search existing
         if (_customerMode == 0) ...[
           TextField(
             controller: _customerSearchCtrl,
-            style: const TextStyle(color: AppTheme.textPrimary),
-            decoration: const InputDecoration(
+            style: TextStyle(color: AppTheme.textPrimary),
+            decoration: InputDecoration(
               labelText: 'Buscar por nombre, cedula o telefono',
               prefixIcon: Icon(Icons.search_rounded),
             ),
             onChanged: _searchCustomers,
           ),
           if (_searchingCustomers)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 4),
               child: LinearProgressIndicator(color: AppTheme.accentCyan),
             ),
@@ -628,11 +628,11 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             (c) => ListTile(
               title: Text(
                 c.fullName,
-                style: const TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: AppTheme.textPrimary),
               ),
               subtitle: Text(
                 '${c.idNumber} - ${c.phone}',
-                style: const TextStyle(color: AppTheme.textSecondary),
+                style: TextStyle(color: AppTheme.textSecondary),
               ),
               selected: _selectedCustomer?.id == c.id,
               onTap: () => setState(() {
@@ -645,18 +645,18 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           if (_selectedCustomer != null)
             GlassCard(
               borderColor: AppTheme.accentGreen.withValues(alpha: 0.4),
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.check_circle_rounded,
                     color: AppTheme.accentGreen,
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       '${_selectedCustomer!.fullName} | ${_selectedCustomer!.phone}',
-                      style: const TextStyle(color: AppTheme.textPrimary),
+                      style: TextStyle(color: AppTheme.textPrimary),
                     ),
                   ),
                 ],
@@ -685,8 +685,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         if (_customerMode == 2)
           GlassCard(
             borderColor: AppTheme.accentOrange.withValues(alpha: 0.4),
-            padding: const EdgeInsets.all(14),
-            child: const Row(
+            padding: EdgeInsets.all(14),
+            child: Row(
               children: [
                 Icon(Icons.flash_on_rounded, color: AppTheme.accentOrange),
                 SizedBox(width: 10),
@@ -721,7 +721,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   // ---- STEP 2: DEVICE ----
   Widget _deviceStep() {
     if (_loadingCatalog) {
-      return const Center(
+      return Center(
         child: CircularProgressIndicator(color: AppTheme.accentCyan),
       );
     }
@@ -730,7 +730,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Device type selector
-        const Text(
+        Text(
           'Tipo de equipo',
           style: TextStyle(
             color: AppTheme.textSecondary,
@@ -738,7 +738,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -759,11 +759,11 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             );
           }).toList(),
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
 
         // Brand selector
         if (_selectedType != null) ...[
-          const Text(
+          Text(
             'Marca',
             style: TextStyle(
               color: AppTheme.textSecondary,
@@ -805,7 +805,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Toma fotos del estado actual del equipo',
           style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
         ),
@@ -837,7 +837,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                           color: AppTheme.accentRed,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.close,
                           color: Colors.white,
                           size: 16,
@@ -859,7 +859,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   border: Border.all(color: AppTheme.dividerColor),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Column(
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
@@ -882,7 +882,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           ],
         ),
         if (_photos.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 8),
             child: Text(
               'Opcional pero recomendado',
@@ -900,8 +900,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       children: [
         TextFormField(
           controller: _problemCtrl,
-          style: const TextStyle(color: AppTheme.textPrimary),
-          decoration: const InputDecoration(
+          style: TextStyle(color: AppTheme.textPrimary),
+          decoration: InputDecoration(
             labelText: 'Descripcion del problema *',
             hintText: 'Describa el problema reportado...',
             alignLabelWithHint: true,
@@ -909,10 +909,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           maxLines: 4,
           validator: (v) => v?.isEmpty == true ? 'Requerido' : null,
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
 
         // Technician assignment (optional)
-        const Text(
+        Text(
           'Asignar tecnico (opcional)',
           style: TextStyle(
             color: AppTheme.textSecondary,
@@ -920,9 +920,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         if (_technicians.isEmpty)
-          const Text(
+          Text(
             'No hay tecnicos registrados',
             style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
           )
@@ -932,7 +932,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             runSpacing: 8,
             children: [
               ChoiceChip(
-                label: const Text('Sin asignar'),
+                label: Text('Sin asignar'),
                 selected: _selectedTechnicianId == null,
                 onSelected: (_) => setState(() => _selectedTechnicianId = null),
               ),
@@ -973,10 +973,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     String? hint,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: 12),
       child: TextFormField(
         controller: ctrl,
-        style: const TextStyle(color: AppTheme.textPrimary),
+        style: TextStyle(color: AppTheme.textPrimary),
         decoration: InputDecoration(labelText: label, hintText: hint),
         keyboardType: keyboard,
         validator: required

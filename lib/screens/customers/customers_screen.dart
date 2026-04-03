@@ -38,28 +38,28 @@ class _CustomersScreenState extends State<CustomersScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Row(children: [
-          const Icon(Icons.edit_rounded, color: AppTheme.accentCyan),
-          const SizedBox(width: 10),
+          Icon(Icons.edit_rounded, color: AppTheme.accentCyan),
+          SizedBox(width: 10),
           Text('Editar ${c.fullName}',
-              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
         ]),
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             TextField(controller: nameCtrl,
-                style: const TextStyle(color: AppTheme.textPrimary),
-                decoration: const InputDecoration(labelText: 'Nombre')),
-            const SizedBox(height: 12),
+                style: TextStyle(color: AppTheme.textPrimary),
+                decoration: InputDecoration(labelText: 'Nombre')),
+            SizedBox(height: 12),
             TextField(controller: idCtrl,
-                style: const TextStyle(color: AppTheme.textPrimary),
-                decoration: const InputDecoration(labelText: 'Cedula / NIT')),
-            const SizedBox(height: 12),
+                style: TextStyle(color: AppTheme.textPrimary),
+                decoration: InputDecoration(labelText: 'Cedula / NIT')),
+            SizedBox(height: 12),
             TextField(controller: phoneCtrl,
-                style: const TextStyle(color: AppTheme.textPrimary),
-                decoration: const InputDecoration(labelText: 'Telefono'),
+                style: TextStyle(color: AppTheme.textPrimary),
+                decoration: InputDecoration(labelText: 'Telefono'),
                 keyboardType: TextInputType.phone),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextField(controller: emailCtrl,
-                style: const TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: AppTheme.textPrimary),
                 decoration: const InputDecoration(labelText: 'Email'),
                 keyboardType: TextInputType.emailAddress),
           ]),
@@ -96,7 +96,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
             Icon(Icons.person_add_rounded, color: AppTheme.accentCyan),
             SizedBox(width: 10),
@@ -112,31 +112,31 @@ class _CustomersScreenState extends State<CustomersScreen> {
               children: [
                 TextFormField(
                   controller: nameCtrl,
-                  style: const TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: AppTheme.textPrimary),
                   decoration:
-                      const InputDecoration(labelText: 'Nombre completo *'),
+                      InputDecoration(labelText: 'Nombre completo *'),
                   validator: (v) => v?.isEmpty == true ? 'Requerido' : null,
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 TextFormField(
                   controller: idCtrl,
-                  style: const TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: AppTheme.textPrimary),
                   decoration:
-                      const InputDecoration(labelText: 'Cedula / NIT *'),
+                      InputDecoration(labelText: 'Cedula / NIT *'),
                   validator: (v) => v?.isEmpty == true ? 'Requerido' : null,
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 TextFormField(
                   controller: phoneCtrl,
-                  style: const TextStyle(color: AppTheme.textPrimary),
-                  decoration: const InputDecoration(labelText: 'Telefono *'),
+                  style: TextStyle(color: AppTheme.textPrimary),
+                  decoration: InputDecoration(labelText: 'Telefono *'),
                   keyboardType: TextInputType.phone,
                   validator: (v) => v?.isEmpty == true ? 'Requerido' : null,
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 TextFormField(
                   controller: emailCtrl,
-                  style: const TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: AppTheme.textPrimary),
                   decoration:
                       const InputDecoration(labelText: 'Email (opcional)'),
                   keyboardType: TextInputType.emailAddress,
@@ -164,7 +164,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                 Navigator.pop(ctx);
               }
             },
-            child: const Text('Guardar'),
+            child: Text('Guardar'),
           ),
         ],
       ),
@@ -177,13 +177,13 @@ class _CustomersScreenState extends State<CustomersScreen> {
       children: [
         // Search
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
           child: Row(
             children: [
               Expanded(
                 child: TextField(
                   controller: _searchController,
-                  style: const TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: AppTheme.textPrimary),
                   decoration: InputDecoration(
                     hintText: 'Buscar cliente...',
                     prefixIcon: const Icon(Icons.search_rounded),
@@ -237,7 +237,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
             },
             builder: (context, state) {
               if (state is CustomersLoading) {
-                return const Center(
+                return Center(
                     child: CircularProgressIndicator(
                         color: AppTheme.accentCyan));
               }
@@ -252,8 +252,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
                             size: 56,
                             color:
                                 AppTheme.textSecondary.withValues(alpha: 0.4)),
-                        const SizedBox(height: 12),
-                        const Text('Sin clientes',
+                        SizedBox(height: 12),
+                        Text('Sin clientes',
                             style:
                                 TextStyle(color: AppTheme.textSecondary)),
                       ],
@@ -277,24 +277,24 @@ class _CustomersScreenState extends State<CustomersScreen> {
                                 AppTheme.accentCyan.withValues(alpha: 0.12),
                             child: Text(
                               c.fullName[0].toUpperCase(),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppTheme.accentCyan,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 14),
+                          SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(c.fullName,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontWeight: FontWeight.w600,
                                         color: AppTheme.textPrimary)),
-                                const SizedBox(height: 2),
+                                SizedBox(height: 2),
                                 Text('CC ${c.idNumber}  |  ${c.phone}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         color: AppTheme.textSecondary,
                                         fontSize: 12)),
                               ],
@@ -305,9 +305,9 @@ class _CustomersScreenState extends State<CustomersScreen> {
                                 color: AppTheme.textSecondary
                                     .withValues(alpha: 0.5),
                                 size: 18),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           IconButton(
-                            icon: const Icon(Icons.edit_rounded,
+                            icon: Icon(Icons.edit_rounded,
                                 color: AppTheme.textSecondary, size: 18),
                             onPressed: () => _showEditDialog(c),
                           ),

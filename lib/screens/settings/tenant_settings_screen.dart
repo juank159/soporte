@@ -120,17 +120,17 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Configuracion del negocio'),
+        title: Text('Configuracion del negocio'),
         actions: [
           TextButton.icon(
             onPressed: _saving ? null : _save,
             icon: _saving
-                ? const SizedBox(
+                ? SizedBox(
                     width: 16, height: 16,
                     child: CircularProgressIndicator(
                         strokeWidth: 2, color: AppTheme.accentCyan))
-                : const Icon(Icons.save_rounded),
-            label: const Text('Guardar'),
+                : Icon(Icons.save_rounded),
+            label: Text('Guardar'),
           ),
         ],
       ),
@@ -154,7 +154,7 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
                       borderColor: AppTheme.accentOrange.withValues(alpha: 0.3),
                       child: Column(
                         children: [
-                          const Row(children: [
+                          Row(children: [
                             Icon(Icons.image_rounded,
                                 color: AppTheme.accentOrange, size: 20),
                             SizedBox(width: 8),
@@ -164,8 +164,8 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
                                     color: AppTheme.accentOrange,
                                     fontSize: 15)),
                           ]),
-                          const SizedBox(height: 12),
-                          const Text(
+                          SizedBox(height: 12),
+                          Text(
                             'Este logo aparecera en el acta de entrega.',
                             style: TextStyle(
                                 color: AppTheme.textSecondary, fontSize: 12),
@@ -255,7 +255,7 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(children: [
+                          Row(children: [
                             Icon(Icons.schedule_rounded,
                                 color: AppTheme.accentBlue, size: 20),
                             SizedBox(width: 8),
@@ -265,17 +265,17 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
                                     color: AppTheme.accentBlue,
                                     fontSize: 15)),
                           ]),
-                          const SizedBox(height: 12),
-                          const Text(
+                          SizedBox(height: 12),
+                          Text(
                             'Todas las fechas y horas se mostraran segun esta zona horaria.',
                             style: TextStyle(
                                 color: AppTheme.textSecondary, fontSize: 12),
                           ),
-                          const SizedBox(height: 10),
+                          SizedBox(height: 10),
                           DropdownButtonFormField<String>(
                             value: _selectedTimezone,
                             dropdownColor: AppTheme.surfaceColor,
-                            style: const TextStyle(color: AppTheme.textPrimary),
+                            style: TextStyle(color: AppTheme.textPrimary),
                             decoration: const InputDecoration(
                               prefixIcon: Icon(Icons.public_rounded),
                             ),
@@ -327,7 +327,7 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(children: [
+                          Row(children: [
                             Icon(Icons.gavel_rounded,
                                 color: AppTheme.accentPurple, size: 20),
                             SizedBox(width: 8),
@@ -337,11 +337,11 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
                                     color: AppTheme.accentPurple,
                                     fontSize: 15)),
                           ]),
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16),
                           _fieldMultiline(_legalNoticeCtrl,
                               'Texto legal para el ticket',
                               'Ej: No nos hacemos responsables por equipos no reclamados despues de 30 dias...'),
-                          const Text(
+                          Text(
                             'Este texto aparecera al final del ticket de recepcion.',
                             style: TextStyle(
                                 color: AppTheme.textSecondary, fontSize: 11),
@@ -357,12 +357,12 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
                       height: 50,
                       child: ElevatedButton.icon(
                         onPressed: _saving ? null : _save,
-                        icon: const Icon(Icons.save_rounded),
-                        label: const Text('Guardar cambios',
+                        icon: Icon(Icons.save_rounded),
+                        label: Text('Guardar cambios',
                             style: TextStyle(fontSize: 16)),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                   ],
                 ),
               ),
@@ -373,10 +373,10 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
   Widget _field(TextEditingController ctrl, String label, IconData icon,
       {TextInputType? keyboard}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: EdgeInsets.only(bottom: 14),
       child: TextField(
         controller: ctrl,
-        style: const TextStyle(color: AppTheme.textPrimary),
+        style: TextStyle(color: AppTheme.textPrimary),
         keyboardType: keyboard,
         decoration: InputDecoration(
           labelText: label,
@@ -389,10 +389,10 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
   Widget _fieldMultiline(
       TextEditingController ctrl, String label, String hint) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: EdgeInsets.only(bottom: 14),
       child: TextField(
         controller: ctrl,
-        style: const TextStyle(color: AppTheme.textPrimary),
+        style: TextStyle(color: AppTheme.textPrimary),
         maxLines: 3,
         decoration: InputDecoration(
           labelText: label,

@@ -172,18 +172,18 @@ class _OrderListScreenState extends State<OrderListScreen> {
   void _showFilterDialog() {
     final now = DateTime.now();
     final todayStr = _fmt(now);
-    final weekAgo = _fmt(now.subtract(const Duration(days: 7)));
+    final weekAgo = _fmt(now.subtract(Duration(days: 7)));
     final monthStart = _fmt(DateTime(now.year, now.month, 1));
 
     showModalBottomSheet(
       context: context,
       backgroundColor: AppTheme.surfaceColor,
-      shape: const RoundedRectangleBorder(
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) => Padding(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -198,8 +198,8 @@ class _OrderListScreenState extends State<OrderListScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              const Text('Filtros',
+              SizedBox(height: 16),
+              Text('Filtros',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700,
                       color: AppTheme.textPrimary)),
               const SizedBox(height: 16),
@@ -249,7 +249,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                   });
                 }),
               ]),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
             ],
           ),
         ),
@@ -261,7 +261,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: selected
               ? AppTheme.accentCyan.withValues(alpha: 0.15)
@@ -299,34 +299,34 @@ class _OrderListScreenState extends State<OrderListScreen> {
       children: [
         // Search + Filter button
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
           child: Row(
             children: [
               Expanded(
                 child: TextField(
                   controller: _searchCtrl,
-                  style: const TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: AppTheme.textPrimary),
                   decoration: InputDecoration(
                     hintText: 'Buscar orden, cliente, equipo...',
                     prefixIcon: const Icon(Icons.search_rounded),
                     suffixIcon: _searchCtrl.text.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.clear_rounded, size: 18),
+                            icon: Icon(Icons.clear_rounded, size: 18),
                             onPressed: () { _searchCtrl.clear(); _loadOrders(); },
                           )
                         : null,
                     contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
                   onChanged: (v) { setState(() {}); _onSearchChanged(v); },
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               // Filter button
               GestureDetector(
                 onTap: _showFilterDialog,
                 child: Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: (_statusFilter != null || _dateLabel != 'Todas')
                         ? AppTheme.accentCyan.withValues(alpha: 0.15)
@@ -352,22 +352,22 @@ class _OrderListScreenState extends State<OrderListScreen> {
         // Active filters indicator
         if (_statusFilter != null || _dateLabel != 'Todas')
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             child: Row(
               children: [
-                const Icon(Icons.filter_list_rounded,
+                Icon(Icons.filter_list_rounded,
                     size: 14, color: AppTheme.accentCyan),
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 Text(_activeFiltersLabel,
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: AppTheme.accentCyan, fontSize: 12)),
-                const Spacer(),
+                Spacer(),
                 GestureDetector(
                   onTap: () {
                     _setDateFilter('Todas', null, null);
                     _onFilterChanged(null);
                   },
-                  child: const Text('Limpiar',
+                  child: Text('Limpiar',
                       style: TextStyle(
                           color: AppTheme.textSecondary, fontSize: 11)),
                 ),
@@ -379,7 +379,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
           child: BlocBuilder<OrdersBloc, OrdersState>(
             builder: (context, state) {
               if (state is OrdersLoading) {
-                return const Center(
+                return Center(
                     child:
                         CircularProgressIndicator(color: AppTheme.accentCyan));
               }
@@ -393,7 +393,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                             size: 48,
                             color:
                                 AppTheme.textSecondary.withValues(alpha: 0.4)),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         Text(
                           _searchCtrl.text.isNotEmpty
                               ? 'Sin resultados'
@@ -401,7 +401,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                                   ? 'Sin ordenes en este periodo'
                                   : 'Sin ordenes',
                           style:
-                              const TextStyle(color: AppTheme.textSecondary),
+                              TextStyle(color: AppTheme.textSecondary),
                         ),
                       ],
                     ),
@@ -411,12 +411,12 @@ class _OrderListScreenState extends State<OrderListScreen> {
                   children: [
                     // Results header with print button
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       child: Row(
                         children: [
                           Text(
                             '${state.orders.length} ordenes',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: AppTheme.textSecondary, fontSize: 12),
                           ),
                           const Spacer(),
@@ -465,7 +465,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                           ).then((_) => _loadOrders());
                         },
                         child: GlassCard(
-                          padding: const EdgeInsets.all(14),
+                          padding: EdgeInsets.all(14),
                           child: Row(
                             children: [
                               Container(
@@ -475,20 +475,20 @@ class _OrderListScreenState extends State<OrderListScreen> {
                                     color: color,
                                     borderRadius: BorderRadius.circular(2)),
                               ),
-                              const SizedBox(width: 14),
+                              SizedBox(width: 14),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(order.orderNumber,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                             fontWeight: FontWeight.w700,
                                             color: AppTheme.textPrimary,
                                             fontSize: 14)),
-                                    const SizedBox(height: 2),
+                                    SizedBox(height: 2),
                                     Text(
                                         '${order.device?.brand ?? ''} ${order.device?.model ?? ''}',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                             color: AppTheme.textSecondary,
                                             fontSize: 13),
                                         overflow: TextOverflow.ellipsis),

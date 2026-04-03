@@ -40,7 +40,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     context.read<OrdersBloc>().add(OrdersLoadRequested());
     _fabController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: Duration(milliseconds: 600),
     )..forward();
   }
 
@@ -55,7 +55,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Row(children: [
+        title: Row(children: [
           Icon(Icons.search_rounded, color: AppTheme.accentCyan),
           SizedBox(width: 10),
           Text('Buscar orden', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
@@ -63,7 +63,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         content: TextField(
           controller: ctrl,
           autofocus: true,
-          style: const TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: AppTheme.textPrimary),
           decoration: const InputDecoration(
             hintText: 'Numero de orden, cliente o serial...',
             prefixIcon: Icon(Icons.tag_rounded),
@@ -247,13 +247,13 @@ class _DashboardScreenState extends State<DashboardScreen>
                     MaterialPageRoute(builder: (_) => const DeviceCatalogScreen()));
               } else if (value == 'users') {
                 Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const UsersManagementScreen()));
+                    MaterialPageRoute(builder: (_) => UsersManagementScreen()));
               } else if (value == 'subscription') {
                 Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
+                    MaterialPageRoute(builder: (_) => SubscriptionScreen()));
               } else if (value == 'tenant') {
                 Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const TenantSettingsScreen()));
+                    MaterialPageRoute(builder: (_) => TenantSettingsScreen()));
               }
             },
             itemBuilder: (context) {
@@ -264,7 +264,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(widget.user.fullName,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontWeight: FontWeight.bold,
                               color: AppTheme.textPrimary)),
                       Text(widget.user.role.toUpperCase(),
@@ -350,7 +350,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               return items;
             },
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
         ],
       ),
       body: Container(
@@ -371,13 +371,13 @@ class _DashboardScreenState extends State<DashboardScreen>
                           setState(() => _currentIndex = i),
                       labelType: NavigationRailLabelType.all,
                       leading: Padding(
-                        padding: const EdgeInsets.only(bottom: 16, top: 8),
+                        padding: EdgeInsets.only(bottom: 16, top: 8),
                         child: ScaleTransition(
                           scale: _fabController,
                           child: FloatingActionButton(
                             heroTag: 'nav_fab',
                             onPressed: _navigateToCreateOrder,
-                            child: const Icon(Icons.add_rounded),
+                            child: Icon(Icons.add_rounded),
                           ),
                         ),
                       ),
@@ -435,7 +435,7 @@ class _DashboardHome extends StatelessWidget {
     return BlocBuilder<OrdersBloc, OrdersState>(
       builder: (context, state) {
         if (state is OrdersLoading) {
-          return const Center(
+          return Center(
             child: CircularProgressIndicator(color: AppTheme.accentCyan),
           );
         }
@@ -444,11 +444,11 @@ class _DashboardHome extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.cloud_off_rounded,
+                Icon(Icons.cloud_off_rounded,
                     size: 56, color: AppTheme.accentRed),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 Text(state.message,
-                    style: const TextStyle(color: AppTheme.textSecondary)),
+                    style: TextStyle(color: AppTheme.textSecondary)),
                 const SizedBox(height: 16),
                 OutlinedButton.icon(
                   onPressed: () =>
@@ -508,10 +508,10 @@ class _DashboardHome extends StatelessWidget {
                   color: AppTheme.textPrimary,
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 '$pendingOrders pendientes | $todayOrders hoy | ${orders.length} total',
-                style: const TextStyle(
+                style: TextStyle(
                     color: AppTheme.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 20),
@@ -537,10 +537,10 @@ class _DashboardHome extends StatelessWidget {
                       Icons.local_shipping_rounded, AppTheme.accentCyan),
                 ],
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               // Recent orders
-              const Text(
+              Text(
                 'Ordenes recientes',
                 style: TextStyle(
                   fontSize: 17,
@@ -548,11 +548,11 @@ class _DashboardHome extends StatelessWidget {
                   color: AppTheme.textPrimary,
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
 
               if (orders.isEmpty)
                 GlassCard(
-                  padding: const EdgeInsets.all(40),
+                  padding: EdgeInsets.all(40),
                   child: Center(
                     child: Column(
                       children: [
@@ -560,8 +560,8 @@ class _DashboardHome extends StatelessWidget {
                             size: 48,
                             color:
                                 AppTheme.textSecondary.withValues(alpha: 0.5)),
-                        const SizedBox(height: 12),
-                        const Text('Sin ordenes aun',
+                        SizedBox(height: 12),
+                        Text('Sin ordenes aun',
                             style:
                                 TextStyle(color: AppTheme.textSecondary)),
                       ],
@@ -602,14 +602,14 @@ class _StatCard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: color, size: 20),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             Text(
               '$count',
               style: TextStyle(
@@ -620,7 +620,7 @@ class _StatCard extends StatelessWidget {
             ),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 11, color: AppTheme.textSecondary),
             ),
           ],
@@ -643,7 +643,7 @@ Color statusColor(String status) {
     case 'repairing':
       return AppTheme.accentPurple;
     case 'quality_check':
-      return const Color(0xFFEAB308);
+      return Color(0xFFEAB308);
     case 'ready':
       return AppTheme.accentGreen;
     case 'delivered':
@@ -685,24 +685,24 @@ class _OrderTile extends StatelessWidget {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     '${order.orderNumber}  ${order.device?.brand ?? ''} ${order.device?.model ?? ''}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w600,
                       color: AppTheme.textPrimary,
                       fontSize: 14,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 3),
+                  SizedBox(height: 3),
                   Text(
                     order.customer?.fullName ?? '',
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: AppTheme.textSecondary, fontSize: 12),
                     overflow: TextOverflow.ellipsis,
                   ),

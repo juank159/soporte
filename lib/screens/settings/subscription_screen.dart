@@ -49,14 +49,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Suscripcion')),
+      appBar: AppBar(title: Text('Suscripcion')),
       body: Container(
         width: double.infinity, height: double.infinity,
         decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: AppTheme.gradientPrimary)),
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: AppTheme.accentCyan))
+            ? Center(child: CircularProgressIndicator(color: AppTheme.accentCyan))
             : _sub == null
-                ? const Center(child: Text('Error al cargar', style: TextStyle(color: AppTheme.textSecondary)))
+                ? Center(child: Text('Error al cargar', style: TextStyle(color: AppTheme.textSecondary)))
                 : RefreshIndicator(color: AppTheme.accentCyan, onRefresh: _load, child: SingleChildScrollView(padding: const EdgeInsets.all(16), child: _buildContent())),
       ),
     );
@@ -84,24 +84,24 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             children: [
               Row(children: [
                 Container(
-                  padding: const EdgeInsets.all(14),
+                  padding: EdgeInsets.all(14),
                   decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
                   child: Icon(Icons.workspace_premium_rounded, color: color, size: 28),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
                     Text('Plan ${_planLabel(plan)}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color)),
                     if (isExpired) ...[
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(color: AppTheme.accentRed.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-                        child: const Text('EXPIRADO', style: TextStyle(color: AppTheme.accentRed, fontSize: 10, fontWeight: FontWeight.w700)),
+                        child: Text('EXPIRADO', style: TextStyle(color: AppTheme.accentRed, fontSize: 10, fontWeight: FontWeight.w700)),
                       ),
                     ],
                   ]),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text('Ordenes ilimitadas', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
                 ])),
               ]),
@@ -145,10 +145,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 inverted: true,
               ),
               if (expiresAt != null) ...[
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Text(
                   'Vence: ${AppDateUtils.format(expiresAt, includeTime: false)}',
-                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
                 ),
               ],
             ],
@@ -159,12 +159,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         GlassCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              const Icon(Icons.devices_rounded, color: AppTheme.accentCyan, size: 20),
-              const SizedBox(width: 8),
-              const Text('Dispositivos conectados', style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary, fontSize: 15)),
-              const Spacer(),
+              Icon(Icons.devices_rounded, color: AppTheme.accentCyan, size: 20),
+              SizedBox(width: 8),
+              Text('Dispositivos conectados', style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary, fontSize: 15)),
+              Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: (activeDevices >= maxDevices ? AppTheme.accentRed : AppTheme.accentCyan).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
@@ -174,11 +174,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   fontWeight: FontWeight.w700, fontSize: 12)),
               ),
             ]),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             if (devices.isEmpty)
               Container(
-                padding: const EdgeInsets.all(20),
-                child: const Center(child: Column(children: [
+                padding: EdgeInsets.all(20),
+                child: Center(child: Column(children: [
                   Icon(Icons.devices_other_rounded, size: 36, color: AppTheme.textSecondary),
                   SizedBox(height: 8),
                   Text('No hay dispositivos activos', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
@@ -189,24 +189,24 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               ...devices.map((d) {
                 final lastActive = d['lastActive'] != null ? DateTime.tryParse(d['lastActive']) : null;
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
+                  padding: EdgeInsets.only(bottom: 10),
                   child: Row(children: [
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: AppTheme.accentCyan.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(_platformIcon(d['platform'] ?? ''), color: AppTheme.accentCyan, size: 18),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(d['deviceName'] ?? 'Dispositivo', style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
+                      Text(d['deviceName'] ?? 'Dispositivo', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
                       Text('${d['platform'] ?? ''} | ${lastActive != null ? AppDateUtils.format(lastActive) : '-'}',
-                          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
                     ])),
                     IconButton(
-                      icon: const Icon(Icons.close_rounded, color: AppTheme.accentRed, size: 18),
+                      icon: Icon(Icons.close_rounded, color: AppTheme.accentRed, size: 18),
                       onPressed: () => _deactivateDevice(d['id']),
                       tooltip: 'Desconectar',
                     ),
@@ -217,10 +217,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         ),
 
         // Plans
-        const SizedBox(height: 4),
-        const Align(alignment: Alignment.centerLeft,
+        SizedBox(height: 4),
+        Align(alignment: Alignment.centerLeft,
           child: Text('Planes disponibles', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 15))),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         _planCard('basic', 3, 5, plan == 'basic'),
         _planCard('pro', 5, 20, plan == 'pro'),
         _planCard('enterprise', 50, 100, plan == 'enterprise'),
@@ -234,12 +234,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
         Icon(icon, color: color, size: 16),
-        const SizedBox(width: 8),
-        Text(label, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
-        const Spacer(),
+        SizedBox(width: 8),
+        Text(label, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
+        Spacer(),
         Text(rightText, style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 13)),
       ]),
-      const SizedBox(height: 6),
+      SizedBox(height: 6),
       ClipRRect(
         borderRadius: BorderRadius.circular(4),
         child: LinearProgressIndicator(
@@ -249,7 +249,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           minHeight: 6,
         ),
       ),
-      const SizedBox(height: 4),
+      SizedBox(height: 4),
       Text(subtitle, style: TextStyle(color: color, fontSize: 11)),
     ]);
   }
@@ -258,14 +258,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final color = _planColor(plan);
     return GlassCard(
       borderColor: isCurrent ? color.withValues(alpha: 0.5) : AppTheme.dividerColor,
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(14),
       child: Row(children: [
         Icon(Icons.workspace_premium_rounded, color: color, size: 22),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(_planLabel(plan), style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 14)),
           Text('$devices dispositivos | $users usuarios | Ordenes ilimitadas',
-              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
         ])),
         if (isCurrent)
           Container(

@@ -67,20 +67,20 @@ class _DeviceCatalogScreenState extends State<DeviceCatalogScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(title,
-            style: const TextStyle(color: AppTheme.textPrimary, fontSize: 18)),
+            style: TextStyle(color: AppTheme.textPrimary, fontSize: 18)),
         content: TextField(
           controller: controller,
           autofocus: true,
-          style: const TextStyle(color: AppTheme.textPrimary),
+          style: TextStyle(color: AppTheme.textPrimary),
           decoration: InputDecoration(labelText: label),
           onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+              onPressed: () => Navigator.pop(ctx), child: Text('Cancelar')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: const Text('Crear'),
+            child: Text('Crear'),
           ),
         ],
       ),
@@ -91,13 +91,13 @@ class _DeviceCatalogScreenState extends State<DeviceCatalogScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Catalogo de equipos'),
+        title: Text('Catalogo de equipos'),
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: AppTheme.accentCyan,
           labelColor: AppTheme.accentCyan,
           unselectedLabelColor: AppTheme.textSecondary,
-          tabs: const [
+          tabs: [
             Tab(text: 'Tipos de equipo'),
             Tab(text: 'Marcas'),
           ],
@@ -127,14 +127,14 @@ class _DeviceCatalogScreenState extends State<DeviceCatalogScreen>
             _addBrand();
           }
         },
-        child: const Icon(Icons.add_rounded),
+        child: Icon(Icons.add_rounded),
       ),
     );
   }
 
   Widget _typesTab() {
     if (_types.isEmpty) {
-      return const Center(
+      return Center(
         child: Text('No hay tipos de equipo.\nToca + para crear uno.',
             textAlign: TextAlign.center,
             style: TextStyle(color: AppTheme.textSecondary)),
@@ -153,7 +153,7 @@ class _DeviceCatalogScreenState extends State<DeviceCatalogScreen>
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: AppTheme.accentCyan.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
@@ -161,17 +161,17 @@ class _DeviceCatalogScreenState extends State<DeviceCatalogScreen>
                 child: Icon(_getIcon(t.icon),
                     color: AppTheme.accentCyan, size: 22),
               ),
-              const SizedBox(width: 14),
+              SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(t.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontWeight: FontWeight.w600,
                             color: AppTheme.textPrimary)),
                     Text('$brandCount marcas',
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: AppTheme.textSecondary, fontSize: 12)),
                   ],
                 ),
@@ -230,7 +230,7 @@ class _DeviceCatalogScreenState extends State<DeviceCatalogScreen>
                       .toList();
 
               if (filtered.isEmpty) {
-                return const Center(
+                return Center(
                   child: Text('No hay marcas. Toca + para crear.',
                       style: TextStyle(color: AppTheme.textSecondary)),
                 );
@@ -252,15 +252,15 @@ class _DeviceCatalogScreenState extends State<DeviceCatalogScreen>
                               AppTheme.accentPurple.withValues(alpha: 0.12),
                           child: Text(
                             b.name[0].toUpperCase(),
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: AppTheme.accentPurple,
                                 fontWeight: FontWeight.bold),
                           ),
                         ),
-                        const SizedBox(width: 14),
+                        SizedBox(width: 14),
                         Expanded(
                           child: Text(b.name,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   color: AppTheme.textPrimary)),
                         ),

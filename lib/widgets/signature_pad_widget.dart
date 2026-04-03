@@ -72,7 +72,7 @@ class _SignaturePadWidgetState extends State<SignaturePadWidget> {
         Row(
           children: [
             Text(widget.label,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: AppTheme.textSecondary)),
@@ -102,7 +102,7 @@ class _SignaturePadWidgetState extends State<SignaturePadWidget> {
             ],
           ],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
             border: Border.all(

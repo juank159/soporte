@@ -1,47 +1,49 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // -- Brand Colors --
-  static const Color primaryColor = Color(0xFF0A1628);
-  static const Color surfaceColor = Color(0xFF111D33);
-  static const Color cardColor = Color(0xFF162240);
+  // Track current brightness
+  static bool _isDark = true;
+  static void setBrightness(bool dark) => _isDark = dark;
+  static bool get isDark => _isDark;
+
+  // -- Accent colors (same for both themes) --
   static const Color accentCyan = Color(0xFF00D4FF);
   static const Color accentBlue = Color(0xFF3B82F6);
   static const Color accentPurple = Color(0xFF8B5CF6);
   static const Color accentGreen = Color(0xFF10B981);
   static const Color accentOrange = Color(0xFFF59E0B);
   static const Color accentRed = Color(0xFFEF4444);
-  static const Color textPrimary = Color(0xFFF1F5F9);
-  static const Color textSecondary = Color(0xFF94A3B8);
-  static const Color dividerColor = Color(0xFF1E3A5F);
+
+  // -- Dynamic colors (change with theme) --
+  static Color get primaryColor => _isDark ? const Color(0xFF0A1628) : const Color(0xFFF5F7FA);
+  static Color get surfaceColor => _isDark ? const Color(0xFF111D33) : Colors.white;
+  static Color get cardColor => _isDark ? const Color(0xFF162240) : Colors.white;
+  static Color get textPrimary => _isDark ? const Color(0xFFF1F5F9) : const Color(0xFF1A1A2E);
+  static Color get textSecondary => _isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280);
+  static Color get dividerColor => _isDark ? const Color(0xFF1E3A5F) : const Color(0xFFE5E7EB);
 
   // Legacy aliases
-  static const Color successColor = accentGreen;
-  static const Color errorColor = accentRed;
-  static const Color secondaryColor = accentBlue;
-  static const Color backgroundColor = primaryColor;
+  static Color get successColor => accentGreen;
+  static Color get errorColor => accentRed;
+  static Color get secondaryColor => accentBlue;
+  static Color get backgroundColor => primaryColor;
 
-  static final List<Color> gradientPrimary = [
-    const Color(0xFF0A1628),
-    const Color(0xFF0F2847),
-  ];
+  static List<Color> get gradientPrimary => _isDark
+      ? [const Color(0xFF0A1628), const Color(0xFF0F2847)]
+      : [const Color(0xFFF5F7FA), const Color(0xFFEEF2F7)];
 
-  static final List<Color> gradientAccent = [
-    accentCyan,
-    accentBlue,
-  ];
+  static List<Color> get gradientAccent => [accentCyan, accentBlue];
 
-  static final List<Color> gradientCard = [
-    const Color(0xFF162240).withValues(alpha: 0.8),
-    const Color(0xFF1A2D50).withValues(alpha: 0.6),
-  ];
+  static List<Color> get gradientCard => _isDark
+      ? [const Color(0xFF162240).withValues(alpha: 0.8), const Color(0xFF1A2D50).withValues(alpha: 0.6)]
+      : [Colors.white.withValues(alpha: 0.95), Colors.white.withValues(alpha: 0.85)];
 
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
       scaffoldBackgroundColor: primaryColor,
-      colorScheme: const ColorScheme.dark(
+      colorScheme: ColorScheme.dark(
         primary: accentCyan,
         secondary: accentBlue,
         surface: surfaceColor,
@@ -51,7 +53,7 @@ class AppTheme {
         onSurface: textPrimary,
         onError: Colors.white,
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         foregroundColor: textPrimary,
         elevation: 0,
@@ -92,48 +94,48 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: accentCyan, width: 2),
         ),
-        labelStyle: const TextStyle(color: textSecondary),
+        labelStyle: TextStyle(color: textSecondary),
         hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.5)),
         prefixIconColor: textSecondary,
       ),
-      dividerTheme: const DividerThemeData(color: dividerColor),
+      dividerTheme: DividerThemeData(color: dividerColor),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: surfaceColor,
         indicatorColor: accentCyan.withValues(alpha: 0.15),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const IconThemeData(color: accentCyan);
+            return IconThemeData(color: accentCyan);
           }
-          return const IconThemeData(color: textSecondary);
+          return IconThemeData(color: textSecondary);
         }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const TextStyle(
+            return TextStyle(
                 color: accentCyan, fontSize: 12, fontWeight: FontWeight.w600);
           }
-          return const TextStyle(color: textSecondary, fontSize: 12);
+          return TextStyle(color: textSecondary, fontSize: 12);
         }),
       ),
       navigationRailTheme: NavigationRailThemeData(
         backgroundColor: surfaceColor,
         indicatorColor: accentCyan.withValues(alpha: 0.15),
-        selectedIconTheme: const IconThemeData(color: accentCyan),
-        unselectedIconTheme: const IconThemeData(color: textSecondary),
-        selectedLabelTextStyle: const TextStyle(
+        selectedIconTheme: IconThemeData(color: accentCyan),
+        unselectedIconTheme: IconThemeData(color: textSecondary),
+        selectedLabelTextStyle: TextStyle(
             color: accentCyan, fontSize: 12, fontWeight: FontWeight.w600),
         unselectedLabelTextStyle:
-            const TextStyle(color: textSecondary, fontSize: 12),
+            TextStyle(color: textSecondary, fontSize: 12),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: surfaceColor,
         selectedColor: accentCyan.withValues(alpha: 0.2),
         side: BorderSide(color: dividerColor),
-        labelStyle: const TextStyle(color: textPrimary),
+        labelStyle: TextStyle(color: textPrimary),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: cardColor,
-        contentTextStyle: const TextStyle(color: textPrimary),
+        contentTextStyle: TextStyle(color: textPrimary),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         behavior: SnackBarBehavior.floating,
       ),
@@ -149,7 +151,7 @@ class AppTheme {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           textStyle:
-              const TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.5),
+              TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.5),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -163,7 +165,7 @@ class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(foregroundColor: accentCyan),
       ),
-      listTileTheme: const ListTileThemeData(
+      listTileTheme: ListTileThemeData(
         textColor: textPrimary,
         iconColor: textSecondary,
       ),
@@ -172,7 +174,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       progressIndicatorTheme:
-          const ProgressIndicatorThemeData(color: accentCyan),
+          ProgressIndicatorThemeData(color: accentCyan),
     );
   }
 
@@ -192,7 +194,7 @@ class AppTheme {
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: const TextStyle(
+        titleTextStyle: TextStyle(
           color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
@@ -225,7 +227,7 @@ class AppTheme {
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          textStyle: TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(

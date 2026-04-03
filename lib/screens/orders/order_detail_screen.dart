@@ -221,7 +221,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       color: AppTheme.surfaceColor,
       borderRadius: BorderRadius.circular(8),
     ),
-    child: const Icon(Icons.broken_image_rounded, color: AppTheme.textSecondary),
+    child: Icon(Icons.broken_image_rounded, color: AppTheme.textSecondary),
   );
 
   void _showFullPhotoUrl(String url) {
@@ -284,7 +284,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final selected = await showDialog<User>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Asignar tecnico',
+        title: Text('Asignar tecnico',
             style: TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -294,14 +294,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       backgroundColor:
                           AppTheme.accentPurple.withValues(alpha: 0.15),
                       child: Text(t.fullName[0],
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: AppTheme.accentPurple)),
                     ),
                     title: Text(t.fullName,
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: AppTheme.textPrimary)),
                     subtitle: Text(t.role,
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: AppTheme.textSecondary, fontSize: 11)),
                     onTap: () => Navigator.pop(ctx, t),
                   ))
@@ -548,27 +548,27 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(Icons.assignment_rounded, color: color, size: 28),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       _order.orderNumber,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
                         color: AppTheme.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     StatusBadge(label: _order.statusLabel, color: color),
                   ],
                 ),
@@ -577,7 +577,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Text('Total',
+                    Text('Total',
                         style: TextStyle(
                             color: AppTheme.textSecondary, fontSize: 11)),
                     Text(
@@ -724,10 +724,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         title: Row(
           children: [
             Icon(_nextStatusIcon(next), color: AppTheme.accentCyan),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             Expanded(
               child: Text(_nextStatusLabel(next),
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: AppTheme.textPrimary, fontSize: 16)),
             ),
           ],
@@ -739,12 +739,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             children: [
               Text(
                 'Cambiar estado a "${_statusLabelFor(next)}"',
-                style: const TextStyle(color: AppTheme.textSecondary),
+                style: TextStyle(color: AppTheme.textSecondary),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               TextFormField(
                 controller: notesCtrl,
-                style: const TextStyle(color: AppTheme.textPrimary),
+                style: TextStyle(color: AppTheme.textPrimary),
                 decoration: InputDecoration(
                   labelText: labelText,
                   hintText: hintText,
@@ -839,7 +839,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     ),
                     child: Icon(icon, color: color, size: 16),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     label,
                     style: TextStyle(
@@ -944,7 +944,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     color: AppTheme.surfaceColor,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.broken_image_rounded,
+                  child: Icon(Icons.broken_image_rounded,
                       color: AppTheme.textSecondary),
                 );
               }).toList(),
@@ -962,28 +962,28 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             'Problema', Icons.report_rounded, AppTheme.accentOrange, [
           Text(_order.problemReported,
               style:
-                  const TextStyle(color: AppTheme.textPrimary, fontSize: 13)),
+                  TextStyle(color: AppTheme.textPrimary, fontSize: 13)),
         ]),
         if (_order.diagnosis != null)
           _sectionCard('Diagnostico', Icons.medical_services_rounded,
               AppTheme.accentCyan, [
             Text(_order.diagnosis!,
-                style: const TextStyle(
+                style: TextStyle(
                     color: AppTheme.textPrimary, fontSize: 13)),
           ]),
         if (_order.items.isNotEmpty || _order.total > 0)
           _sectionCard(
               'Costos', Icons.receipt_long_rounded, AppTheme.accentGreen, [
             ..._order.items.map((item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
+                  padding: EdgeInsets.only(bottom: 4),
                   child: Row(
                     children: [
                       Expanded(
                           child: Text('${item.qty}x ${item.description}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                   color: AppTheme.textPrimary, fontSize: 12))),
                       Text('\$${formatMoney(item.total)}',
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: AppTheme.textSecondary, fontSize: 12)),
                     ],
                   ),
@@ -991,7 +991,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             if (_order.laborCost > 0)
               _infoRow('Mano de obra',
                   '\$${formatMoney(_order.laborCost)}'),
-            const Divider(color: AppTheme.dividerColor),
+            Divider(color: AppTheme.dividerColor),
             _infoRow('Subtotal', '\$${formatMoney(_order.subtotal)}'),
             _infoRow('IVA 19%', '\$${formatMoney(_order.tax)}'),
             Row(
@@ -1053,25 +1053,25 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     ),
                 ],
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(toLabel,
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: AppTheme.textPrimary,
                             fontWeight: FontWeight.w600,
                             fontSize: 13)),
                     if (userName != null)
                       Text(userName,
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: AppTheme.accentCyan, fontSize: 11)),
                     if (notes != null && notes.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(top: 2),
+                        padding: EdgeInsets.only(top: 2),
                         child: Text(notes,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: AppTheme.textSecondary,
                                 fontSize: 11,
                                 fontStyle: FontStyle.italic)),
@@ -1109,7 +1109,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       fontSize: 14)),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           ...children,
         ],
       ),
@@ -1118,18 +1118,18 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Widget _infoRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: EdgeInsets.symmetric(vertical: 2),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
               style:
-                  const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-          const SizedBox(width: 12),
+                  TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+          SizedBox(width: 12),
           Flexible(
             child: Text(value,
-                style: const TextStyle(
+                style: TextStyle(
                     color: AppTheme.textPrimary, fontSize: 12),
                 textAlign: TextAlign.end),
           ),
@@ -1163,7 +1163,7 @@ class _ActaPreviewScreen extends StatelessWidget {
         actions: [
           if (!isDesktop)
             IconButton(
-              icon: const Icon(Icons.share_rounded),
+              icon: Icon(Icons.share_rounded),
               tooltip: 'Compartir',
               onPressed: () {
                 printing_lib.Printing.sharePdf(
@@ -1230,7 +1230,7 @@ class _TicketPreviewScreen extends StatelessWidget {
   final Tenant tenant;
   final TicketPrinterService printerService;
 
-  const _TicketPreviewScreen({
+  _TicketPreviewScreen({
     required this.order,
     required this.tenant,
     required this.printerService,

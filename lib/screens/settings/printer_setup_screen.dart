@@ -161,7 +161,7 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
       content: Row(children: [
         Icon(ok ? Icons.check_circle_rounded : Icons.error_rounded,
             color: Colors.white),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Expanded(child: Text(ok ? 'OK: $action' : 'Error: $action')),
       ]),
       backgroundColor: ok ? AppTheme.accentGreen : AppTheme.accentRed,
@@ -171,7 +171,7 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Configurar Impresora')),
+      appBar: AppBar(title: Text('Configurar Impresora')),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -211,7 +211,7 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
                         size: 24,
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,7 +220,7 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
                             _hasPrinter
                                 ? _printerName
                                 : 'No configurada',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 color: AppTheme.textPrimary),
                           ),
@@ -228,7 +228,7 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
                             _hasPrinter
                                 ? 'Tipo: ${_printerType == 'tcp' ? 'Red TCP/IP' : 'Sistema USB'}'
                                 : 'Configure una impresora',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: AppTheme.textSecondary, fontSize: 12),
                           ),
                         ],
@@ -249,8 +249,8 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
                     width: double.infinity,
                     child: OutlinedButton.icon(
                       onPressed: _loading ? null : _testPrint,
-                      icon: const Icon(Icons.print_rounded),
-                      label: const Text('Imprimir pagina de prueba'),
+                      icon: Icon(Icons.print_rounded),
+                      label: Text('Imprimir pagina de prueba'),
                     ),
                   ),
                 ),
@@ -299,20 +299,20 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
                   children: [
                     Row(children: [
                       Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: AppTheme.accentBlue.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.description_rounded,
+                        child: Icon(Icons.description_rounded,
                             color: AppTheme.accentBlue, size: 20),
                       ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Impresora normal (A4)',
+                            Text('Impresora normal (A4)',
                                 style: TextStyle(
                                     fontWeight: FontWeight.w700,
                                     color: AppTheme.textPrimary,
@@ -337,7 +337,7 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
                           onPressed: _clearA4Printer,
                         ),
                     ]),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     Builder(
                       builder: (context) {
                         final isDesktop =
@@ -349,7 +349,7 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'En dispositivos moviles se usa el dialogo de impresion del sistema (AirPrint / Android Print).',
                                 style: TextStyle(
                                     color: AppTheme.textSecondary, fontSize: 12),
@@ -365,8 +365,8 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
                                       name: 'Prueba_A4',
                                     );
                                   },
-                                  icon: const Icon(Icons.print_rounded, size: 18),
-                                  label: const Text('Probar impresion A4'),
+                                  icon: Icon(Icons.print_rounded, size: 18),
+                                  label: Text('Probar impresion A4'),
                                 ),
                               ),
                             ],
@@ -376,7 +376,7 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Seleccione la impresora para actas de entrega en formato A4/Carta.',
                               style: TextStyle(
                                   color: AppTheme.textSecondary, fontSize: 12),
@@ -392,7 +392,7 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
                                   if (!mounted || _systemPrinters.isEmpty) {
                                     if (mounted) {
                                       ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
+                                        SnackBar(
                                           content: Text('No se encontraron impresoras'),
                                           backgroundColor: AppTheme.accentOrange,
                                         ),
@@ -403,7 +403,7 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
                                   final selected = await showDialog<Printer>(
                                     context: context,
                                     builder: (ctx) => AlertDialog(
-                                      title: const Text('Seleccionar impresora A4',
+                                      title: Text('Seleccionar impresora A4',
                                           style: TextStyle(
                                               color: AppTheme.textPrimary,
                                               fontSize: 16)),
@@ -418,7 +418,7 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
                                                             ? AppTheme.accentBlue
                                                             : AppTheme.textSecondary),
                                                     title: Text(p.name,
-                                                        style: const TextStyle(
+                                                        style: TextStyle(
                                                             color: AppTheme.textPrimary)),
                                                     subtitle: Row(
                                                       children: [
@@ -462,7 +462,7 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
                 ),
               ),
 
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
 
               // Help
               GlassCard(
@@ -473,8 +473,8 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
                       Icon(Icons.help_outline_rounded,
                           color: AppTheme.accentCyan.withValues(alpha: 0.7),
                           size: 20),
-                      const SizedBox(width: 8),
-                      const Text('Ayuda',
+                      SizedBox(width: 8),
+                      Text('Ayuda',
                           style: TextStyle(
                               fontWeight: FontWeight.w600,
                               color: AppTheme.textPrimary)),
@@ -498,24 +498,24 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
 
   Widget _tcpForm() {
     return Column(
-      key: const ValueKey('tcp'),
+      key: ValueKey('tcp'),
       children: [
         TextField(
           controller: _nameCtrl,
-          style: const TextStyle(color: AppTheme.textPrimary),
-          decoration: const InputDecoration(
+          style: TextStyle(color: AppTheme.textPrimary),
+          decoration: InputDecoration(
             labelText: 'Nombre',
             prefixIcon: Icon(Icons.label_outline_rounded),
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Row(children: [
           Expanded(
             flex: 3,
             child: TextField(
               controller: _hostCtrl,
-              style: const TextStyle(color: AppTheme.textPrimary),
-              decoration: const InputDecoration(
+              style: TextStyle(color: AppTheme.textPrimary),
+              decoration: InputDecoration(
                 labelText: 'Direccion IP',
                 hintText: '192.168.1.100',
                 prefixIcon: Icon(Icons.lan_rounded),
@@ -523,29 +523,29 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
               keyboardType: TextInputType.number,
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: TextField(
               controller: _portCtrl,
-              style: const TextStyle(color: AppTheme.textPrimary),
-              decoration: const InputDecoration(labelText: 'Puerto'),
+              style: TextStyle(color: AppTheme.textPrimary),
+              decoration: InputDecoration(labelText: 'Puerto'),
               keyboardType: TextInputType.number,
             ),
           ),
         ]),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
             onPressed: _loading ? null : _connectTcp,
             icon: _loading
-                ? const SizedBox(
+                ? SizedBox(
                     width: 18,
                     height: 18,
                     child: CircularProgressIndicator(
                         strokeWidth: 2, color: AppTheme.primaryColor))
-                : const Icon(Icons.link_rounded),
-            label: const Text('Conectar por red'),
+                : Icon(Icons.link_rounded),
+            label: Text('Conectar por red'),
           ),
         ),
       ],
@@ -554,12 +554,12 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
 
   Widget _usbDetectedList() {
     return Column(
-      key: const ValueKey('usb'),
+      key: ValueKey('usb'),
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Impresoras detectadas',
+            Text('Impresoras detectadas',
                 style: TextStyle(
                     color: AppTheme.textPrimary,
                     fontWeight: FontWeight.w600)),
@@ -570,10 +570,10 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
 
         if (_loadingPrinters)
-          const Padding(
+          Padding(
             padding: EdgeInsets.all(24),
             child: Center(
                 child:
@@ -581,17 +581,17 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
           )
         else if (_systemPrinters.isEmpty)
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(24),
             child: Column(
               children: [
                 Icon(Icons.search_off_rounded,
                     size: 40,
                     color: AppTheme.textSecondary.withValues(alpha: 0.5)),
-                const SizedBox(height: 8),
-                const Text('No se detectaron impresoras',
+                SizedBox(height: 8),
+                Text('No se detectaron impresoras',
                     style: TextStyle(color: AppTheme.textSecondary)),
-                const SizedBox(height: 4),
-                const Text(
+                SizedBox(height: 4),
+                Text(
                   'Conecte una impresora por USB e intente de nuevo',
                   style: TextStyle(
                       color: AppTheme.textSecondary, fontSize: 12),
@@ -611,7 +611,7 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
                 padding: const EdgeInsets.only(bottom: 8),
                 child: GlassCard(
                   margin: EdgeInsets.zero,
-                  padding: const EdgeInsets.symmetric(
+                  padding: EdgeInsets.symmetric(
                       horizontal: 12, vertical: 10),
                   borderColor: p.isDefault
                       ? AppTheme.accentCyan.withValues(alpha: 0.4)
@@ -619,7 +619,7 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: AppTheme.accentCyan.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(8),
@@ -634,20 +634,20 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
                           size: 20,
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(p.name,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontWeight: FontWeight.w600,
                                     color: AppTheme.textPrimary,
                                     fontSize: 13),
                                 overflow: TextOverflow.ellipsis),
                             if (p.model != null)
                               Text(p.model!,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       color: AppTheme.textSecondary,
                                       fontSize: 11)),
                             Row(
@@ -726,21 +726,21 @@ class _PrinterSetupScreenState extends State<PrinterSetupScreen>
         children: [
           Container(
             padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
               color: AppTheme.accentCyan.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(title,
-                style: const TextStyle(
+                style: TextStyle(
                     color: AppTheme.accentCyan,
                     fontSize: 11,
                     fontWeight: FontWeight.w600)),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: Text(text,
-                style: const TextStyle(
+                style: TextStyle(
                     color: AppTheme.textSecondary, fontSize: 12)),
           ),
         ],

@@ -90,7 +90,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Row(
+          title: Row(
             children: [
               Icon(Icons.person_add_rounded, color: AppTheme.accentCyan),
               SizedBox(width: 10),
@@ -106,34 +106,34 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                 children: [
                   TextFormField(
                     controller: nameCtrl,
-                    style: const TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: AppTheme.textPrimary),
                     decoration:
-                        const InputDecoration(labelText: 'Nombre completo *'),
+                        InputDecoration(labelText: 'Nombre completo *'),
                     validator: (v) =>
                         v?.isEmpty == true ? 'Requerido' : null,
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   TextFormField(
                     controller: emailCtrl,
-                    style: const TextStyle(color: AppTheme.textPrimary),
-                    decoration: const InputDecoration(labelText: 'Email *'),
+                    style: TextStyle(color: AppTheme.textPrimary),
+                    decoration: InputDecoration(labelText: 'Email *'),
                     keyboardType: TextInputType.emailAddress,
                     validator: (v) =>
                         v?.isEmpty == true ? 'Requerido' : null,
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   TextFormField(
                     controller: passCtrl,
-                    style: const TextStyle(color: AppTheme.textPrimary),
+                    style: TextStyle(color: AppTheme.textPrimary),
                     decoration:
-                        const InputDecoration(labelText: 'Contrasena *'),
+                        InputDecoration(labelText: 'Contrasena *'),
                     obscureText: true,
                     validator: (v) => v != null && v.length < 4
                         ? 'Minimo 4 caracteres'
                         : null,
                   ),
-                  const SizedBox(height: 16),
-                  const Align(
+                  SizedBox(height: 16),
+                  Align(
                     alignment: Alignment.centerLeft,
                     child: Text('Rol',
                         style: TextStyle(
@@ -182,7 +182,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                   }
                 }
               },
-              child: const Text('Crear'),
+              child: Text('Crear'),
             ),
           ],
         ),
@@ -198,12 +198,12 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(isActive ? 'Suspender usuario' : 'Activar usuario',
-            style: const TextStyle(color: AppTheme.textPrimary)),
+            style: TextStyle(color: AppTheme.textPrimary)),
         content: Text(
           isActive
               ? '${user['fullName']} no podra iniciar sesion.'
               : '${user['fullName']} podra iniciar sesion nuevamente.',
-          style: const TextStyle(color: AppTheme.textSecondary),
+          style: TextStyle(color: AppTheme.textSecondary),
         ),
         actions: [
           TextButton(
@@ -248,7 +248,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
         return StatefulBuilder(
           builder: (ctx, setDialogState) => AlertDialog(
             title: Text('Cambiar rol de ${user['fullName']}',
-                style: const TextStyle(
+                style: TextStyle(
                     color: AppTheme.textPrimary, fontSize: 16)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -258,9 +258,9 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                           children: [
                             Icon(_roleIcon(role),
                                 color: _roleColor(role), size: 20),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             Text(_roleLabel(role),
-                                style: const TextStyle(
+                                style: TextStyle(
                                     color: AppTheme.textPrimary)),
                           ],
                         ),
@@ -303,7 +303,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Gestion de usuarios')),
+      appBar: AppBar(title: Text('Gestion de usuarios')),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -342,7 +342,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                             child: Icon(_roleIcon(role),
                                 color: color, size: 22),
                           ),
-                          const SizedBox(width: 14),
+                          SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -363,7 +363,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                                     ),
                                     if (!isActive)
                                       Container(
-                                        padding: const EdgeInsets.symmetric(
+                                        padding: EdgeInsets.symmetric(
                                             horizontal: 6, vertical: 2),
                                         decoration: BoxDecoration(
                                           color: AppTheme.accentRed
@@ -371,7 +371,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                                           borderRadius:
                                               BorderRadius.circular(8),
                                         ),
-                                        child: const Text('Suspendido',
+                                        child: Text('Suspendido',
                                             style: TextStyle(
                                                 color: AppTheme.accentRed,
                                                 fontSize: 10,
@@ -379,13 +379,13 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                                       ),
                                   ],
                                 ),
-                                const SizedBox(height: 2),
+                                SizedBox(height: 2),
                                 Text(user['email'] as String,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         color: AppTheme.textSecondary,
                                         fontSize: 12),
                                     overflow: TextOverflow.ellipsis),
-                                const SizedBox(height: 2),
+                                SizedBox(height: 2),
                                 StatusBadge(
                                     label: _roleLabel(role), color: color),
                               ],
@@ -394,7 +394,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                           // Actions menu (not for admins editing themselves)
                           if (role != 'admin')
                             PopupMenuButton<String>(
-                              icon: const Icon(Icons.more_vert_rounded,
+                              icon: Icon(Icons.more_vert_rounded,
                                   color: AppTheme.textSecondary),
                               onSelected: (action) {
                                 switch (action) {

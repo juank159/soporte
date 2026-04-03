@@ -60,7 +60,7 @@ class _PrintTicketScreenState extends State<PrintTicketScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Error al imprimir'),
             backgroundColor: AppTheme.errorColor,
           ),
@@ -130,13 +130,13 @@ class _PrintTicketScreenState extends State<PrintTicketScreen> {
               child: ElevatedButton.icon(
                 onPressed: _connected && !_printing ? _printTicket : null,
                 icon: _printing
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white),
                       )
-                    : const Icon(Icons.print),
+                    : Icon(Icons.print),
                 label: Text(
                   _printing ? 'Imprimiendo...' : 'Imprimir Ticket 80mm',
                 ),

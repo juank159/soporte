@@ -64,7 +64,7 @@ class _DateRangePickerDialogState extends State<DateRangePickerDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: AppTheme.surfaceColor,
-      title: const Row(children: [
+      title: Row(children: [
         Icon(Icons.date_range_rounded, color: AppTheme.accentCyan, size: 22),
         SizedBox(width: 10),
         Text('Seleccionar rango',
@@ -80,18 +80,18 @@ class _DateRangePickerDialogState extends State<DateRangePickerDialog> {
               onTap: () => _pickDate(true),
               borderRadius: BorderRadius.circular(12),
               child: Container(
-                padding: const EdgeInsets.all(14),
+                padding: EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: AppTheme.cardColor,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppTheme.dividerColor),
                 ),
                 child: Row(children: [
-                  const Icon(Icons.calendar_today_rounded,
+                  Icon(Icons.calendar_today_rounded,
                       color: AppTheme.accentCyan, size: 18),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('Desde',
+                    Text('Desde',
                         style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
                     Text(
                       _from != null ? _fmt(_from!) : 'Seleccionar fecha',
@@ -104,27 +104,27 @@ class _DateRangePickerDialogState extends State<DateRangePickerDialog> {
                 ]),
               ),
             ),
-            const SizedBox(height: 12),
-            const Icon(Icons.arrow_downward_rounded,
+            SizedBox(height: 12),
+            Icon(Icons.arrow_downward_rounded,
                 color: AppTheme.textSecondary, size: 18),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             // To
             InkWell(
               onTap: () => _pickDate(false),
               borderRadius: BorderRadius.circular(12),
               child: Container(
-                padding: const EdgeInsets.all(14),
+                padding: EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: AppTheme.cardColor,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppTheme.dividerColor),
                 ),
                 child: Row(children: [
-                  const Icon(Icons.event_rounded,
+                  Icon(Icons.event_rounded,
                       color: AppTheme.accentPurple, size: 18),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('Hasta',
+                    Text('Hasta',
                         style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
                     Text(
                       _to != null ? _fmt(_to!) : 'Seleccionar fecha',

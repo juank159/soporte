@@ -260,7 +260,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
       appBar: AppBar(
         title: Text('Entrega ${widget.order.orderNumber}'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: Icon(Icons.arrow_back_rounded),
           onPressed: _finish,
         ),
       ),
@@ -321,7 +321,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(children: [
+                Row(children: [
                   Icon(Icons.attach_money_rounded,
                       color: AppTheme.accentGreen, size: 20),
                   SizedBox(width: 8),
@@ -331,46 +331,46 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                           color: AppTheme.accentGreen,
                           fontSize: 15)),
                 ]),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 TextField(
                   controller: _totalCtrl,
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: AppTheme.textPrimary, fontSize: 18),
                   keyboardType: TextInputType.number,
                   inputFormatters: [ThousandSeparatorFormatter()],
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Valor total del servicio *',
                     prefixText: '\$ ',
                     prefixIcon: Icon(Icons.payments_rounded),
                   ),
                 ),
-                const SizedBox(height: 16),
-                const Text('Garantia: *',
+                SizedBox(height: 16),
+                Text('Garantia: *',
                     style: TextStyle(
                         color: AppTheme.textSecondary, fontSize: 13)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     ChoiceChip(
-                      label: const Text('Si'),
+                      label: Text('Si'),
                       selected: _hasWarranty == true,
                       onSelected: (_) =>
                           setState(() => _hasWarranty = true),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     ChoiceChip(
-                      label: const Text('No'),
+                      label: Text('No'),
                       selected: _hasWarranty == false,
                       onSelected: (_) =>
                           setState(() => _hasWarranty = false),
                     ),
                     if (_hasWarranty == true) ...[
-                      const SizedBox(width: 16),
+                      SizedBox(width: 16),
                       SizedBox(
                         width: 100,
                         child: TextField(
                           controller: _warrantyMonthsCtrl,
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: AppTheme.textPrimary),
                           keyboardType: TextInputType.number,
                           textAlign: TextAlign.center,
@@ -394,7 +394,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(children: [
+                Row(children: [
                   Icon(Icons.person_rounded,
                       color: AppTheme.accentBlue, size: 18),
                   SizedBox(width: 8),
@@ -404,19 +404,19 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                           color: AppTheme.accentBlue,
                           fontSize: 14)),
                 ]),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 TextField(
                   controller: _clientNameCtrl,
-                  style: const TextStyle(color: AppTheme.textPrimary),
+                  style: TextStyle(color: AppTheme.textPrimary),
                   readOnly: widget.order.customer?.fullName != null &&
                       widget.order.customer!.fullName.isNotEmpty &&
                       widget.order.customer!.idNumber != 'EXPRESS',
                   decoration: InputDecoration(
                     labelText: 'Nombre de quien recibe',
-                    prefixIcon: const Icon(Icons.badge_rounded),
+                    prefixIcon: Icon(Icons.badge_rounded),
                     suffixIcon: widget.order.customer?.fullName != null &&
                         widget.order.customer!.idNumber != 'EXPRESS'
-                        ? const Icon(Icons.lock_rounded,
+                        ? Icon(Icons.lock_rounded,
                             size: 16, color: AppTheme.textSecondary)
                         : null,
                   ),
@@ -447,9 +447,9 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                           color: AppTheme.accentPurple,
                           fontSize: 14)),
                 ]),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 if (_loadingTechnicians)
-                  const Center(
+                  Center(
                       child: CircularProgressIndicator(
                           color: AppTheme.accentCyan))
                 else if (_assignedTechnician != null)
@@ -458,13 +458,13 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                     margin: EdgeInsets.zero,
                     borderColor:
                         AppTheme.accentGreen.withValues(alpha: 0.3),
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(10),
                     child: Row(children: [
-                      const Icon(Icons.check_circle_rounded,
+                      Icon(Icons.check_circle_rounded,
                           color: AppTheme.accentGreen, size: 18),
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10),
                       Text(_assignedTechnician!.fullName,
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: AppTheme.textPrimary,
                               fontWeight: FontWeight.w600)),
                     ]),
@@ -594,7 +594,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
             ),
           ),
 
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
 
           // ===== GENERATE BUTTON =====
           SizedBox(
@@ -604,7 +604,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
               onPressed:
                   _canGenerate && !_generating ? _generateAndDeliver : null,
               icon: _generating
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
@@ -648,22 +648,22 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
     return Column(
       children: [
         GlassCard(
-          margin: const EdgeInsets.all(16),
+          margin: EdgeInsets.all(16),
           borderColor: AppTheme.accentGreen.withValues(alpha: 0.4),
           child: Column(
             children: [
-              const Icon(Icons.check_circle_rounded,
+              Icon(Icons.check_circle_rounded,
                   color: AppTheme.accentGreen, size: 48),
-              const SizedBox(height: 12),
-              const Text('Equipo entregado',
+              SizedBox(height: 12),
+              Text('Equipo entregado',
                   style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                       color: AppTheme.accentGreen)),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 'Orden ${widget.order.orderNumber} - \$${_totalCtrl.text}',
-                style: const TextStyle(
+                style: TextStyle(
                     color: AppTheme.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 16),
@@ -722,19 +722,19 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
 
   Widget _infoRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: EdgeInsets.symmetric(vertical: 2),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 70,
             child: Text(label,
-                style: const TextStyle(
+                style: TextStyle(
                     color: AppTheme.textSecondary, fontSize: 12)),
           ),
           Expanded(
             child: Text(value,
-                style: const TextStyle(
+                style: TextStyle(
                     color: AppTheme.textPrimary, fontSize: 12)),
           ),
         ],

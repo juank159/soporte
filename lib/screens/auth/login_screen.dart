@@ -127,8 +127,8 @@ class _LoginScreenState extends State<LoginScreen>
               SnackBar(
                 content: Row(
                   children: [
-                    const Icon(Icons.error_outline, color: Colors.white),
-                    const SizedBox(width: 8),
+                    Icon(Icons.error_outline, color: Colors.white),
+                    SizedBox(width: 8),
                     Expanded(child: Text(state.message)),
                   ],
                 ),
@@ -273,7 +273,7 @@ class _LoginScreenState extends State<LoginScreen>
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             gradient: LinearGradient(colors: AppTheme.gradientAccent),
@@ -284,7 +284,7 @@ class _LoginScreenState extends State<LoginScreen>
             color: AppTheme.primaryColor,
           ),
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
         GradientText(
           'Servicio Tecnico',
           style: TextStyle(
@@ -293,7 +293,7 @@ class _LoginScreenState extends State<LoginScreen>
             letterSpacing: -0.5,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           'Sistema de gestion inteligente',
           style: TextStyle(
@@ -304,7 +304,7 @@ class _LoginScreenState extends State<LoginScreen>
           textAlign: large ? TextAlign.start : TextAlign.center,
         ),
         if (large) ...[
-          const SizedBox(height: 32),
+          SizedBox(height: 32),
           _featureItem(Icons.speed_rounded, 'Control total de ordenes'),
           _featureItem(Icons.devices_rounded, 'Multiplataforma'),
           _featureItem(Icons.cloud_sync_rounded, 'Sincronizacion en la nube'),
@@ -316,13 +316,13 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _featureItem(IconData icon, String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: 12),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 18, color: AppTheme.accentCyan),
-          const SizedBox(width: 10),
-          Text(text, style: const TextStyle(color: AppTheme.textSecondary)),
+          SizedBox(width: 10),
+          Text(text, style: TextStyle(color: AppTheme.textSecondary)),
         ],
       ),
     );
@@ -330,14 +330,14 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildLoginForm() {
     return GlassCard(
-      padding: const EdgeInsets.all(28),
+      padding: EdgeInsets.all(28),
       child: Form(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Iniciar sesion',
               style: TextStyle(
                 fontSize: 22,
@@ -345,16 +345,16 @@ class _LoginScreenState extends State<LoginScreen>
                 color: AppTheme.textPrimary,
               ),
             ),
-            const SizedBox(height: 4),
-            const Text(
+            SizedBox(height: 4),
+            Text(
               'Ingresa tus credenciales para continuar',
               style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
             ),
-            const SizedBox(height: 28),
+            SizedBox(height: 28),
 
             // Saved accounts quick select
             if (_savedAccounts.isNotEmpty) ...[
-              const Text('Cuentas recientes',
+              Text('Cuentas recientes',
                   style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
               const SizedBox(height: 8),
               SizedBox(
@@ -378,7 +378,7 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                         label: Text(
                           acc['email'] ?? '',
-                          style: const TextStyle(fontSize: 11),
+                          style: TextStyle(fontSize: 11),
                         ),
                         onPressed: () {
                           setState(() {
@@ -391,14 +391,14 @@ class _LoginScreenState extends State<LoginScreen>
                   },
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
             ],
 
             // Tenant
             TextFormField(
               controller: _tenantController,
-              style: const TextStyle(color: AppTheme.textPrimary),
-              decoration: const InputDecoration(
+              style: TextStyle(color: AppTheme.textPrimary),
+              decoration: InputDecoration(
                 labelText: 'Empresa',
                 hintText: 'slug de la empresa',
                 prefixIcon: Icon(Icons.business_rounded),
@@ -406,27 +406,27 @@ class _LoginScreenState extends State<LoginScreen>
               validator: (v) =>
                   v == null || v.isEmpty ? 'Ingrese la empresa' : null,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Email
             TextFormField(
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
-              style: const TextStyle(color: AppTheme.textPrimary),
-              decoration: const InputDecoration(
+              style: TextStyle(color: AppTheme.textPrimary),
+              decoration: InputDecoration(
                 labelText: 'Correo electronico',
                 prefixIcon: Icon(Icons.email_rounded),
               ),
               validator: (v) =>
                   v == null || v.isEmpty ? 'Ingrese su correo' : null,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Password
             TextFormField(
               controller: _passwordController,
               obscureText: _obscurePassword,
-              style: const TextStyle(color: AppTheme.textPrimary),
+              style: TextStyle(color: AppTheme.textPrimary),
               decoration: InputDecoration(
                 labelText: 'Contrasena',
                 prefixIcon: const Icon(Icons.lock_rounded),
@@ -442,7 +442,7 @@ class _LoginScreenState extends State<LoginScreen>
                   v == null || v.isEmpty ? 'Ingrese su contrasena' : null,
               onFieldSubmitted: (_) => _login(),
             ),
-            const SizedBox(height: 28),
+            SizedBox(height: 28),
 
             // Login button
             BlocBuilder<AuthBloc, AuthState>(
@@ -452,7 +452,7 @@ class _LoginScreenState extends State<LoginScreen>
                   width: double.infinity,
                   height: 50,
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
+                    duration: Duration(milliseconds: 300),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
                       gradient: LinearGradient(
