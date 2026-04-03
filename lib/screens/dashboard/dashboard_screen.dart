@@ -156,28 +156,14 @@ class _DashboardScreenState extends State<DashboardScreen>
               child: const Icon(Icons.construction_rounded,
                   size: 18, color: Colors.white),
             ),
-            const SizedBox(width: 10),
-            const Text('Servicio Tecnico'),
+            const SizedBox(width: 8),
+            const Flexible(
+              child: Text('Soporte', overflow: TextOverflow.ellipsis),
+            ),
           ],
         ),
         actions: [
           const SyncStatusWidget(),
-          IconButton(
-            icon: const Icon(Icons.qr_code_scanner_rounded, size: 22),
-            tooltip: 'Escanear QR',
-            onPressed: () async {
-              final navigator = Navigator.of(context);
-              final messenger = ScaffoldMessenger.of(context);
-              final orderId = await navigator.push<String>(
-                MaterialPageRoute(builder: (_) => const ScanQrScreen()),
-              );
-              if (orderId != null && orderId.isNotEmpty) {
-                messenger.showSnackBar(
-                  SnackBar(content: Text('Orden: $orderId')),
-                );
-              }
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, size: 22),
             onPressed: () =>
