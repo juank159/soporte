@@ -8,6 +8,7 @@ import '../../config/format_utils.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/date_range_picker.dart';
 import '../../services/orders_pdf_service.dart';
+import '../../services/actas_batch_service.dart';
 import '../../services/api_service.dart';
 import '../../models/tenant.dart';
 import 'package:printing/printing.dart' as printing_lib;
@@ -93,6 +94,54 @@ class _OrderListScreenState extends State<OrderListScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Error al generar reporte: $e'),
+          backgroundColor: AppTheme.accentRed,
+        ));
+      }
+    }
+  }
+
+  Future<void> _printActasBatch(List<ServiceOrder> orders) async {
+    final delivered = orders
+        .where((o) => o.status == 'delivered' || o.status == 'closed')
+        .toList();
+
+    if (delivered.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('No hay ordenes entregadas en este periodo'),
+          backgroundColor: AppTheme.accentOrange,
+        ));
+      }
+      return;
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Generando ${delivered.length} actas de entrega...'),
+        duration: const Duration(seconds: 2),
+      ));
+    }
+
+    try {
+      final api = ApiService();
+      final res = await api.dio.get('/tenants/me');
+      final tenant = Tenant.fromJson(res.data);
+
+      final service = ActasBatchService();
+      final pdfBytes = await service.generateBatchActas(
+        deliveredOrders: delivered,
+        tenant: tenant,
+        periodLabel: _dateLabel,
+      );
+
+      await printing_lib.Printing.sharePdf(
+        bytes: pdfBytes,
+        filename: 'Actas_Entrega_$_dateLabel.pdf',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error: $e'),
           backgroundColor: AppTheme.accentRed,
         ));
       }
@@ -371,12 +420,23 @@ class _OrderListScreenState extends State<OrderListScreen> {
                                 color: AppTheme.textSecondary, fontSize: 12),
                           ),
                           const Spacer(),
+                          // Print orders report
                           TextButton.icon(
                             onPressed: () => _printOrders(state.orders),
-                            icon: const Icon(Icons.print_rounded, size: 16),
-                            label: const Text('Imprimir', style: TextStyle(fontSize: 12)),
+                            icon: const Icon(Icons.list_alt_rounded, size: 16),
+                            label: const Text('Reporte', style: TextStyle(fontSize: 11)),
                             style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          // Print actas batch
+                          TextButton.icon(
+                            onPressed: () => _printActasBatch(state.orders),
+                            icon: const Icon(Icons.description_rounded, size: 16),
+                            label: const Text('Actas', style: TextStyle(fontSize: 11)),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
                             ),
                           ),
                         ],
