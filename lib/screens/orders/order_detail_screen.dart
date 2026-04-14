@@ -45,14 +45,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     _loadTenant();
     _loadHistory();
     _loadPhotos();
-    _loadGroupedOrders();
   }
 
   final TicketPrinterService _printerService = TicketPrinterService();
   final PdfGeneratorService _pdfGenerator = PdfGeneratorService();
   List<Map<String, dynamic>> _history = [];
   List<Map<String, dynamic>> _photos = [];
-  List<ServiceOrder> _groupedOrders = [];
 
   void _onMenuAction(String action) {
     switch (action) {
@@ -280,15 +278,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     } catch (_) {}
   }
 
-  Future<void> _loadGroupedOrders() async {
-    if (_order.groupId == null || _order.groupId!.isEmpty) return;
-    try {
-      final orders = await _orderService.getGroupedOrders(_order.groupId!);
-      setState(() {
-        _groupedOrders = orders.where((o) => o.id != _order.id).toList();
-      });
-    } catch (_) {}
-  }
 
   void _showReturnDialog() {
     final notesCtrl = TextEditingController();
@@ -1046,49 +1035,64 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ),
           ]),
 
-        // Grouped orders (same visit)
-        if (_groupedOrders.isNotEmpty)
-          _sectionCard('Otros equipos del cliente', Icons.devices_other_rounded,
+        // Multiple equipment in this order
+        if (_order.equipments.isNotEmpty)
+          _sectionCard('Equipos (${_order.equipments.length})', Icons.devices_other_rounded,
               AppTheme.accentPurple, [
-            ..._groupedOrders.map((o) => InkWell(
-                  onTap: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => OrderDetailScreen(order: o),
-                      ),
-                    );
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: statusColor(o.status).withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(o.orderNumber,
-                              style: TextStyle(
-                                  color: statusColor(o.status),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700)),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '${o.device?.type ?? ''} ${o.device?.brand ?? ''} ${o.device?.model ?? ''}',
-                            style: TextStyle(
-                                color: AppTheme.textPrimary, fontSize: 12),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Icon(Icons.chevron_right_rounded,
-                            color: AppTheme.textSecondary, size: 18),
-                      ],
+            ..._order.equipments.map((eq) => Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceColor,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: statusColor(eq.status).withValues(alpha: 0.3),
                     ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(eq.summary,
+                                style: TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13)),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: statusColor(eq.status).withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(eq.statusLabel,
+                                style: TextStyle(
+                                    color: statusColor(eq.status),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      if (eq.deviceSerial != null)
+                        Text('S/N: ${eq.deviceSerial}',
+                            style: TextStyle(
+                                color: AppTheme.textSecondary, fontSize: 11)),
+                      Text('Problema: ${eq.problemReported}',
+                          style: TextStyle(
+                              color: AppTheme.textSecondary, fontSize: 11),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis),
+                      if (eq.diagnosis != null)
+                        Text('Diagnostico: ${eq.diagnosis}',
+                            style: TextStyle(
+                                color: AppTheme.accentCyan, fontSize: 11),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis),
+                    ],
                   ),
                 )),
           ]),

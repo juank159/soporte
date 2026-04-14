@@ -173,7 +173,7 @@ class SyncService {
           tenantId: Value(_tenantId!),
           orderNumber: Value(o.orderNumber),
           customerId: Value(o.customerId),
-          deviceId: Value(o.deviceId),
+          deviceId: Value(o.deviceId ?? ''),
           technicianId: Value(o.technicianId),
           status: Value(o.status),
           problemReported: Value(o.problemReported),

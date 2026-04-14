@@ -487,10 +487,13 @@ class _OrderListScreenState extends State<OrderListScreen> {
                                             fontSize: 14)),
                                     SizedBox(height: 2),
                                     Text(
-                                        '${order.device?.brand ?? ''} ${order.device?.model ?? ''}',
+                                        order.equipments.isNotEmpty
+                                            ? '${order.equipments.length} equipo(s): ${order.equipments.map((e) => '${e.deviceBrand} ${e.deviceModel}').join(', ')}'
+                                            : '${order.device?.brand ?? ''} ${order.device?.model ?? ''}',
                                         style: TextStyle(
                                             color: AppTheme.textSecondary,
                                             fontSize: 13),
+                                        maxLines: 1,
                                         overflow: TextOverflow.ellipsis),
                                     Row(
                                       children: [

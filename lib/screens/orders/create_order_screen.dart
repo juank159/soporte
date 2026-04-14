@@ -382,44 +382,27 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
     if (!mounted) return;
 
-    if (_devices.length == 1) {
-      // Single device - use simple create
-      final d = _devices[0];
-      context.read<OrdersBloc>().add(
-        OrderCreateRequested(
-          customerId: customerId,
-          deviceType: d.typeName,
-          deviceBrand: d.brandName,
-          deviceModel: d.model,
-          problemReported: d.problem,
-          deviceSerial: d.serial,
-          deviceColor: d.color,
-          accessories: d.accessories.isNotEmpty ? d.accessories : null,
-          technicianId: d.technicianId,
-          photos: d.photos.isNotEmpty ? d.photos : null,
-        ),
-      );
-    } else {
-      // Multiple devices - use grouped create
-      final deviceDataList = _devices.map((d) => DeviceData(
-        deviceType: d.typeName,
-        deviceBrand: d.brandName,
-        deviceModel: d.model,
-        problemReported: d.problem,
-        deviceSerial: d.serial,
-        deviceColor: d.color,
-        accessories: d.accessories.isNotEmpty ? d.accessories : null,
-        photos: d.photos.isNotEmpty ? d.photos : null,
-        technicianId: d.technicianId,
-      )).toList();
+    final equipmentList = _devices.map((d) => EquipmentData(
+      deviceType: d.typeName,
+      deviceBrand: d.brandName,
+      deviceModel: d.model,
+      problemReported: d.problem,
+      deviceSerial: d.serial,
+      deviceColor: d.color,
+      accessories: d.accessories.isNotEmpty ? d.accessories : null,
+      photos: d.photos.isNotEmpty ? d.photos : null,
+      technicianId: d.technicianId,
+    )).toList();
 
-      context.read<OrdersBloc>().add(
-        OrderCreateMultipleRequested(
-          customerId: customerId,
-          devices: deviceDataList,
-        ),
-      );
-    }
+    context.read<OrdersBloc>().add(
+      OrderCreateRequested(
+        customerId: customerId,
+        equipments: equipmentList,
+        photos: _devices.length == 1 && _devices[0].photos.isNotEmpty
+            ? _devices[0].photos
+            : null,
+      ),
+    );
   }
 
   Future<void> _showTicketDialog(ServiceOrder order) async {
@@ -544,174 +527,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     );
   }
 
-  Future<void> _showMultipleTicketDialog(
-      List<ServiceOrder> orders, String groupId) async {
-    final tenant =
-        _tenant ?? Tenant(id: '', name: 'Servicio Tecnico', slug: 'default');
-    final printerConnected = await _printerService.hasSavedPrinter;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.surfaceColor,
-        title: Row(
-          children: [
-            Icon(Icons.check_circle_rounded,
-                color: AppTheme.accentGreen, size: 28),
-            SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('${orders.length} ordenes creadas',
-                      style: TextStyle(
-                          color: AppTheme.textPrimary, fontSize: 18)),
-                  Text(
-                      orders.map((o) => o.orderNumber).join(', '),
-                      style: TextStyle(
-                          color: AppTheme.accentCyan, fontSize: 12)),
-                ],
-              ),
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: 380,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Show summary of all devices
-                ...orders.map((order) => GlassCard(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(10),
-                      borderColor:
-                          AppTheme.accentCyan.withValues(alpha: 0.3),
-                      child: Row(
-                        children: [
-                          Icon(_getTypeIcon(null),
-                              color: AppTheme.accentCyan, size: 20),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  order.orderNumber,
-                                  style: TextStyle(
-                                    color: AppTheme.accentCyan,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                Text(
-                                  '${order.device?.type ?? ''} ${order.device?.brand ?? ''} ${order.device?.model ?? ''}',
-                                  style: TextStyle(
-                                      color: AppTheme.textPrimary,
-                                      fontSize: 12),
-                                ),
-                                Text(
-                                  order.problemReported,
-                                  style: TextStyle(
-                                      color: AppTheme.textSecondary,
-                                      fontSize: 11),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    )),
-                const SizedBox(height: 8),
-                if (!printerConnected)
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppTheme.accentOrange.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                          color:
-                              AppTheme.accentOrange.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.print_disabled_rounded,
-                            color: AppTheme.accentOrange, size: 18),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                              'Impresora no conectada.',
-                              style: TextStyle(
-                                  color: AppTheme.accentOrange,
-                                  fontSize: 12)),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        actionsAlignment: MainAxisAlignment.center,
-        actions: [
-          Row(
-            children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    Navigator.pop(context);
-                    context.read<OrdersBloc>().add(OrdersLoadRequested());
-                  },
-                  child: const Text('Cerrar'),
-                ),
-              ),
-              if (printerConnected)
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      int printed = 0;
-                      for (final order in orders) {
-                        final ok =
-                            await _printerService.printReceptionTicket(
-                          order: order,
-                          tenant: tenant,
-                        );
-                        if (ok) printed++;
-                      }
-                      if (ctx.mounted) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                                '$printed/${orders.length} tickets impresos'),
-                            backgroundColor: printed > 0
-                                ? AppTheme.accentGreen
-                                : AppTheme.accentRed,
-                          ),
-                        );
-                        Navigator.pop(ctx);
-                        Navigator.pop(context);
-                        context
-                            .read<OrdersBloc>()
-                            .add(OrdersLoadRequested());
-                      }
-                    },
-                    icon: Icon(Icons.print_rounded, size: 18),
-                    label: Text('Imprimir todos'),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -742,9 +557,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           listener: (context, state) {
             if (state is OrderCreated) {
               _showTicketDialog(state.order);
-            }
-            if (state is OrdersMultipleCreated) {
-              _showMultipleTicketDialog(state.orders, state.groupId);
             }
             if (state is OrdersError) {
               ScaffoldMessenger.of(context).showSnackBar(

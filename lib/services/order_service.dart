@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import '../models/service_order.dart';
+import '../blocs/orders/orders_bloc.dart';
 import 'api_service.dart';
 
 class OrderService {
@@ -29,47 +30,46 @@ class OrderService {
     return ServiceOrder.fromJson(response.data);
   }
 
-  Future<List<ServiceOrder>> getGroupedOrders(String groupId) async {
-    final response = await _api.dio.get('/orders/group/$groupId');
-    return (response.data as List)
-        .map((e) => ServiceOrder.fromJson(e))
-        .toList();
-  }
-
   Future<ServiceOrder> createOrder({
     required String customerId,
-    required String deviceType,
-    required String deviceBrand,
-    required String deviceModel,
-    required String problemReported,
-    String? deviceSerial,
-    String? deviceImei,
-    String? deviceColor,
-    List<String>? accessories,
-    String? technicianId,
+    required List<EquipmentData> equipments,
     List<File>? photos,
-    String? groupId,
   }) async {
-    final data = {
+    final data = <String, dynamic>{
       'customerId': customerId,
-      'deviceType': deviceType,
-      'deviceBrand': deviceBrand,
-      'deviceModel': deviceModel,
-      'problemReported': problemReported,
-      'deviceSerial': deviceSerial,
-      'deviceImei': deviceImei,
-      'deviceColor': deviceColor,
-      'accessories': accessories,
-      'technicianId': technicianId,
-      'groupId': groupId,
     };
 
-    // Create order first WITHOUT photos
+    if (equipments.length == 1) {
+      // Single device - send flat fields for backward compatibility
+      final eq = equipments[0];
+      data['deviceType'] = eq.deviceType;
+      data['deviceBrand'] = eq.deviceBrand;
+      data['deviceModel'] = eq.deviceModel;
+      data['problemReported'] = eq.problemReported;
+      data['deviceSerial'] = eq.deviceSerial;
+      data['deviceColor'] = eq.deviceColor;
+      data['accessories'] = eq.accessories;
+      data['technicianId'] = eq.technicianId;
+    } else {
+      // Multiple devices - send equipments array
+      data['equipments'] = equipments.map((eq) => {
+        'deviceType': eq.deviceType,
+        'deviceBrand': eq.deviceBrand,
+        'deviceModel': eq.deviceModel,
+        'problemReported': eq.problemReported,
+        'deviceSerial': eq.deviceSerial,
+        'deviceColor': eq.deviceColor,
+        'accessories': eq.accessories,
+        'technicianId': eq.technicianId,
+      }).toList();
+    }
+
+    // Create order
     final response = await _api.dio.post('/orders', data: data);
     final order = ServiceOrder.fromJson(response.data);
 
-    // Upload photos separately (one by one to avoid payload too large)
-    if (photos != null && photos.isNotEmpty) {
+    // Upload photos separately for single device
+    if (equipments.length == 1 && photos != null && photos.isNotEmpty) {
       for (final photo in photos) {
         try {
           final bytes = await photo.readAsBytes();
@@ -78,8 +78,25 @@ class OrderService {
             'photoUrl': b64,
             'stage': 'reception',
           });
-        } catch (_) {
-          // Continue even if one photo fails
+        } catch (_) {}
+      }
+    }
+
+    // Upload photos for each equipment in multi-device
+    if (equipments.length > 1) {
+      for (final eq in equipments) {
+        if (eq.photos != null && eq.photos!.isNotEmpty) {
+          for (final photo in eq.photos!) {
+            try {
+              final bytes = await photo.readAsBytes();
+              final b64 = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+              await _api.dio.post('/orders/${order.id}/photos', data: {
+                'photoUrl': b64,
+                'description': '${eq.deviceType} ${eq.deviceBrand} ${eq.deviceModel}',
+                'stage': 'reception',
+              });
+            } catch (_) {}
+          }
         }
       }
     }
@@ -96,6 +113,17 @@ class OrderService {
     return ServiceOrder.fromJson(response.data);
   }
 
+  Future<ServiceOrder> updateEquipmentStatus(
+      String orderId, String equipmentId, String status,
+      {String? notes}) async {
+    final response = await _api.dio
+        .patch('/orders/$orderId/equipments/$equipmentId/status', data: {
+      'status': status,
+      'notes': notes,
+    });
+    return ServiceOrder.fromJson(response.data);
+  }
+
   Future<ServiceOrder> addDiagnosis(
     String orderId, {
     required String diagnosis,
@@ -106,6 +134,20 @@ class OrderService {
       'diagnosis': diagnosis,
       'laborCost': laborCost,
       'items': items,
+    });
+    return ServiceOrder.fromJson(response.data);
+  }
+
+  Future<ServiceOrder> addEquipmentDiagnosis(
+    String orderId,
+    String equipmentId, {
+    required String diagnosis,
+    double? laborCost,
+  }) async {
+    final response = await _api.dio
+        .patch('/orders/$orderId/equipments/$equipmentId/diagnosis', data: {
+      'diagnosis': diagnosis,
+      'laborCost': laborCost,
     });
     return ServiceOrder.fromJson(response.data);
   }

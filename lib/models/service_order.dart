@@ -1,12 +1,98 @@
 import 'customer.dart';
 import 'device.dart';
 
+class OrderEquipment {
+  final String id;
+  final String orderId;
+  final String deviceType;
+  final String deviceBrand;
+  final String deviceModel;
+  final String? deviceSerial;
+  final String? deviceColor;
+  final List<String>? accessories;
+  final String problemReported;
+  final String status;
+  final String? diagnosis;
+  final String? notes;
+  final String? technicianId;
+  final double laborCost;
+  final int warrantyDays;
+  final DateTime? deliveredAt;
+  final DateTime? closedAt;
+  final DateTime createdAt;
+
+  OrderEquipment({
+    required this.id,
+    required this.orderId,
+    required this.deviceType,
+    required this.deviceBrand,
+    required this.deviceModel,
+    this.deviceSerial,
+    this.deviceColor,
+    this.accessories,
+    required this.problemReported,
+    required this.status,
+    this.diagnosis,
+    this.notes,
+    this.technicianId,
+    this.laborCost = 0,
+    this.warrantyDays = 0,
+    this.deliveredAt,
+    this.closedAt,
+    required this.createdAt,
+  });
+
+  factory OrderEquipment.fromJson(Map<String, dynamic> json) {
+    return OrderEquipment(
+      id: json['id'],
+      orderId: json['orderId'],
+      deviceType: json['deviceType'] ?? '',
+      deviceBrand: json['deviceBrand'] ?? '',
+      deviceModel: json['deviceModel'] ?? '',
+      deviceSerial: json['deviceSerial'],
+      deviceColor: json['deviceColor'],
+      accessories: json['accessories'] != null
+          ? (json['accessories'] as List).cast<String>()
+          : null,
+      problemReported: json['problemReported'] ?? '',
+      status: json['status'] ?? 'received',
+      diagnosis: json['diagnosis'],
+      notes: json['notes'],
+      technicianId: json['technicianId'],
+      laborCost: double.tryParse('${json['laborCost']}') ?? 0,
+      warrantyDays: json['warrantyDays'] ?? 0,
+      deliveredAt: json['deliveredAt'] != null
+          ? DateTime.parse(json['deliveredAt'])
+          : null,
+      closedAt:
+          json['closedAt'] != null ? DateTime.parse(json['closedAt']) : null,
+      createdAt: DateTime.parse(json['createdAt']),
+    );
+  }
+
+  String get summary => '$deviceType $deviceBrand $deviceModel';
+
+  String get statusLabel {
+    switch (status) {
+      case 'received': return 'Recibido';
+      case 'diagnosing': return 'En Diagnostico';
+      case 'repairing': return 'En Reparacion';
+      case 'quality_check': return 'Control de Calidad';
+      case 'ready': return 'Listo para Entrega';
+      case 'returned': return 'Devuelto';
+      case 'delivered': return 'Entregado';
+      case 'closed': return 'Cerrado';
+      default: return status;
+    }
+  }
+}
+
 class ServiceOrder {
   final String id;
   final String orderNumber;
   final String customerId;
   final Customer? customer;
-  final String deviceId;
+  final String? deviceId;
   final Device? device;
   final String? technicianId;
   final String status;
@@ -24,14 +110,14 @@ class ServiceOrder {
   final DateTime? closedAt;
   final List<OrderItem> items;
   final List<OrderPhoto> photos;
-  final String? groupId;
+  final List<OrderEquipment> equipments;
 
   ServiceOrder({
     required this.id,
     required this.orderNumber,
     required this.customerId,
     this.customer,
-    required this.deviceId,
+    this.deviceId,
     this.device,
     this.technicianId,
     required this.status,
@@ -49,8 +135,10 @@ class ServiceOrder {
     this.closedAt,
     this.items = const [],
     this.photos = const [],
-    this.groupId,
+    this.equipments = const [],
   });
+
+  bool get isMultiDevice => equipments.isNotEmpty;
 
   factory ServiceOrder.fromJson(Map<String, dynamic> json) {
     return ServiceOrder(
@@ -63,7 +151,7 @@ class ServiceOrder {
       device: json['device'] != null ? Device.fromJson(json['device']) : null,
       technicianId: json['technicianId'],
       status: json['status'],
-      problemReported: json['problemReported'],
+      problemReported: json['problemReported'] ?? '',
       diagnosis: json['diagnosis'],
       notes: json['notes'],
       laborCost: double.tryParse('${json['laborCost']}') ?? 0,
@@ -84,7 +172,11 @@ class ServiceOrder {
       photos: json['photos'] != null
           ? (json['photos'] as List).map((e) => OrderPhoto.fromJson(e)).toList()
           : [],
-      groupId: json['groupId'],
+      equipments: json['equipments'] != null
+          ? (json['equipments'] as List)
+              .map((e) => OrderEquipment.fromJson(e))
+              .toList()
+          : [],
     );
   }
 
@@ -93,9 +185,9 @@ class ServiceOrder {
       case 'received':
         return 'Recibido';
       case 'diagnosing':
-        return 'En Diagnóstico';
+        return 'En Diagnostico';
       case 'repairing':
-        return 'En Reparación';
+        return 'En Reparacion';
       case 'quality_check':
         return 'Control de Calidad';
       case 'ready':
