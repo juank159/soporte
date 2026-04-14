@@ -24,6 +24,7 @@ class ServiceOrder {
   final DateTime? closedAt;
   final List<OrderItem> items;
   final List<OrderPhoto> photos;
+  final String? groupId;
 
   ServiceOrder({
     required this.id,
@@ -48,6 +49,7 @@ class ServiceOrder {
     this.closedAt,
     this.items = const [],
     this.photos = const [],
+    this.groupId,
   });
 
   factory ServiceOrder.fromJson(Map<String, dynamic> json) {
@@ -82,6 +84,7 @@ class ServiceOrder {
       photos: json['photos'] != null
           ? (json['photos'] as List).map((e) => OrderPhoto.fromJson(e)).toList()
           : [],
+      groupId: json['groupId'],
     );
   }
 

@@ -17,6 +17,35 @@ import '../../models/tenant.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/ticket_preview_widget.dart';
 
+/// Holds all data for one device being added to the order
+class _DeviceEntry {
+  String typeName;
+  String? typeIcon;
+  String brandName;
+  String model;
+  String serial;
+  String? color;
+  List<String> accessories;
+  String problem;
+  List<File> photos;
+  String? technicianId;
+
+  _DeviceEntry({
+    required this.typeName,
+    this.typeIcon,
+    required this.brandName,
+    required this.model,
+    required this.serial,
+    this.color,
+    required this.accessories,
+    required this.problem,
+    required this.photos,
+    this.technicianId,
+  });
+
+  String get summary => '$typeName $brandName $model';
+}
+
 class CreateOrderScreen extends StatefulWidget {
   const CreateOrderScreen({super.key});
 
@@ -42,23 +71,26 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   // Device catalog
   List<DeviceTypeModel> _deviceTypes = [];
   List<DeviceBrandModel> _allBrands = [];
+  bool _loadingCatalog = true;
+
+  // Current device being edited
   DeviceTypeModel? _selectedType;
   DeviceBrandModel? _selectedBrand;
   final _deviceModelCtrl = TextEditingController();
   final _deviceSerialCtrl = TextEditingController();
   final _deviceColorCtrl = TextEditingController();
   final _accessoriesCtrl = TextEditingController();
-  bool _loadingCatalog = true;
+  final _problemCtrl = TextEditingController();
+  final List<File> _photos = [];
+  String? _selectedTechnicianId;
+
+  // List of devices added
+  final List<_DeviceEntry> _devices = [];
 
   // Technician assignment
   List<Map<String, dynamic>> _technicians = [];
-  String? _selectedTechnicianId;
 
-  // Problem & photos
-  final _problemCtrl = TextEditingController();
-  final List<File> _photos = [];
   final _imagePicker = ImagePicker();
-
   final _customerService = CustomerService();
   final _catalogService = DeviceCatalogService();
   final _api = ApiService();
@@ -144,7 +176,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   Future<void> _takePhoto() async {
     if (_photos.length >= _maxPhotos) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Maximo 4 fotos por orden'),
+        content: Text('Maximo 4 fotos por equipo'),
         backgroundColor: AppTheme.accentOrange,
       ));
       return;
@@ -155,10 +187,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
     ImageSource? source;
     if (isDesktop) {
-      // Desktop: only gallery (no camera via image_picker)
       source = ImageSource.gallery;
     } else {
-      // Mobile: show camera/gallery picker
       source = await showModalBottomSheet<ImageSource>(
         context: context,
         backgroundColor: AppTheme.surfaceColor,
@@ -212,20 +242,16 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         } else if (_customerMode == 1) {
           if (_newNameCtrl.text.trim().isEmpty) error = 'Ingrese el nombre';
           else if (_newIdCtrl.text.trim().isEmpty) error = 'Ingrese la cedula';
-          else if (_newPhoneCtrl.text.trim().isEmpty) error = 'Ingrese el telefono';
+          else if (_newPhoneCtrl.text.trim().isEmpty)
+            error = 'Ingrese el telefono';
         }
         break;
-      case 1: // Device
-        if (_selectedType == null) error = 'Seleccione el tipo de equipo';
-        else if (_selectedBrand == null) error = 'Seleccione la marca';
-        else if (_deviceModelCtrl.text.trim().isEmpty) error = 'Ingrese el modelo';
-        else if (_deviceSerialCtrl.text.trim().isEmpty) error = 'Ingrese el serial / IMEI';
-        else if (_accessoriesCtrl.text.trim().isEmpty) error = 'Ingrese los accesorios';
+      case 1: // Devices - must have at least one
+        if (_devices.isEmpty) {
+          error = 'Agregue al menos un equipo';
+        }
         break;
-      case 2: // Photos - optional, always valid
-        break;
-      case 3: // Problem
-        if (_problemCtrl.text.trim().isEmpty) error = 'Describa el problema';
+      case 2: // Confirm - always valid
         break;
     }
     if (error != null) {
@@ -238,13 +264,80 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     return true;
   }
 
-  Future<void> _createOrder() async {
-    if (_formKey.currentState?.validate() != true) return;
+  /// Validates current device form and adds it to the list
+  bool _addCurrentDevice() {
+    if (_selectedType == null) {
+      _showError('Seleccione el tipo de equipo');
+      return false;
+    }
+    if (_selectedBrand == null) {
+      _showError('Seleccione la marca');
+      return false;
+    }
+    if (_deviceModelCtrl.text.trim().isEmpty) {
+      _showError('Ingrese el modelo');
+      return false;
+    }
+    if (_deviceSerialCtrl.text.trim().isEmpty) {
+      _showError('Ingrese el serial / IMEI');
+      return false;
+    }
+    if (_accessoriesCtrl.text.trim().isEmpty) {
+      _showError('Ingrese los accesorios');
+      return false;
+    }
+    if (_problemCtrl.text.trim().isEmpty) {
+      _showError('Describa el problema del equipo');
+      return false;
+    }
 
+    final accessories = _accessoriesCtrl.text.trim().isNotEmpty
+        ? _accessoriesCtrl.text.split(',').map((e) => e.trim()).toList()
+        : <String>[];
+
+    setState(() {
+      _devices.add(_DeviceEntry(
+        typeName: _selectedType!.name,
+        typeIcon: _selectedType!.icon,
+        brandName: _selectedBrand!.name,
+        model: _deviceModelCtrl.text.trim(),
+        serial: _deviceSerialCtrl.text.trim(),
+        color: _deviceColorCtrl.text.trim().isNotEmpty
+            ? _deviceColorCtrl.text.trim()
+            : null,
+        accessories: accessories,
+        problem: _problemCtrl.text.trim(),
+        photos: List<File>.from(_photos),
+        technicianId: _selectedTechnicianId,
+      ));
+      _clearDeviceForm();
+    });
+    return true;
+  }
+
+  void _clearDeviceForm() {
+    _selectedType = null;
+    _selectedBrand = null;
+    _deviceModelCtrl.clear();
+    _deviceSerialCtrl.clear();
+    _deviceColorCtrl.clear();
+    _accessoriesCtrl.clear();
+    _problemCtrl.clear();
+    _photos.clear();
+    _selectedTechnicianId = null;
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: AppTheme.accentOrange,
+    ));
+  }
+
+  Future<void> _createOrders() async {
     String customerId;
 
     if (_customerMode == 2) {
-      // Express: use existing "Cliente Express" (created with tenant)
       try {
         final customers =
             await _customerService.getCustomers(search: 'EXPRESS');
@@ -261,18 +354,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           customerId = c.id;
         }
       } catch (_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Error con cliente express'),
-              backgroundColor: AppTheme.accentRed,
-            ),
-          );
-        }
+        if (mounted) _showError('Error con cliente express');
         return;
       }
     } else if (_customerMode == 1) {
-      // New customer
       try {
         final c = await _customerService.createCustomer(
           fullName: _newNameCtrl.text.trim(),
@@ -284,50 +369,59 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         );
         customerId = c.id;
       } catch (_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Error al crear cliente'),
-              backgroundColor: AppTheme.accentRed,
-            ),
-          );
-        }
+        if (mounted) _showError('Error al crear cliente');
         return;
       }
     } else {
       if (_selectedCustomer == null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Seleccione un cliente')));
+        _showError('Seleccione un cliente');
         return;
       }
       customerId = _selectedCustomer!.id;
     }
 
-    final accessories = _accessoriesCtrl.text.trim().isNotEmpty
-        ? _accessoriesCtrl.text.split(',').map((e) => e.trim()).toList()
-        : <String>[];
-
     if (!mounted) return;
-    context.read<OrdersBloc>().add(
-      OrderCreateRequested(
-        customerId: customerId,
-        deviceType: _selectedType?.name ?? '',
-        deviceBrand: _selectedBrand?.name ?? '',
-        deviceModel: _deviceModelCtrl.text.trim(),
-        problemReported: _problemCtrl.text.trim(),
-        deviceSerial: _deviceSerialCtrl.text.trim(),
-        deviceColor: _deviceColorCtrl.text.trim().isNotEmpty
-            ? _deviceColorCtrl.text.trim()
-            : null,
-        accessories: accessories.isNotEmpty ? accessories : null,
-        technicianId: _selectedTechnicianId,
-        photos: _photos.isNotEmpty ? _photos : null,
-      ),
-    );
+
+    if (_devices.length == 1) {
+      // Single device - use simple create
+      final d = _devices[0];
+      context.read<OrdersBloc>().add(
+        OrderCreateRequested(
+          customerId: customerId,
+          deviceType: d.typeName,
+          deviceBrand: d.brandName,
+          deviceModel: d.model,
+          problemReported: d.problem,
+          deviceSerial: d.serial,
+          deviceColor: d.color,
+          accessories: d.accessories.isNotEmpty ? d.accessories : null,
+          technicianId: d.technicianId,
+          photos: d.photos.isNotEmpty ? d.photos : null,
+        ),
+      );
+    } else {
+      // Multiple devices - use grouped create
+      final deviceDataList = _devices.map((d) => DeviceData(
+        deviceType: d.typeName,
+        deviceBrand: d.brandName,
+        deviceModel: d.model,
+        problemReported: d.problem,
+        deviceSerial: d.serial,
+        deviceColor: d.color,
+        accessories: d.accessories.isNotEmpty ? d.accessories : null,
+        photos: d.photos.isNotEmpty ? d.photos : null,
+        technicianId: d.technicianId,
+      )).toList();
+
+      context.read<OrdersBloc>().add(
+        OrderCreateMultipleRequested(
+          customerId: customerId,
+          devices: deviceDataList,
+        ),
+      );
+    }
   }
 
-  @override
   Future<void> _showTicketDialog(ServiceOrder order) async {
     final tenant =
         _tenant ?? Tenant(id: '', name: 'Servicio Tecnico', slug: 'default');
@@ -340,27 +434,19 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         backgroundColor: AppTheme.surfaceColor,
         title: Row(
           children: [
-            Icon(
-              Icons.check_circle_rounded,
-              color: AppTheme.accentGreen,
-              size: 28,
-            ),
+            Icon(Icons.check_circle_rounded,
+                color: AppTheme.accentGreen, size: 28),
             SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Orden creada',
-                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 18),
-                  ),
-                  Text(
-                    order.orderNumber,
-                    style: const TextStyle(
-                      color: AppTheme.accentCyan,
-                      fontSize: 14,
-                    ),
-                  ),
+                  Text('Orden creada',
+                      style: TextStyle(
+                          color: AppTheme.textPrimary, fontSize: 18)),
+                  Text(order.orderNumber,
+                      style: TextStyle(
+                          color: AppTheme.accentCyan, fontSize: 14)),
                 ],
               ),
             ),
@@ -372,10 +458,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Ticket preview
                 Center(
-                  child: TicketPreviewWidget(order: order, tenant: tenant),
-                ),
+                    child: TicketPreviewWidget(
+                        order: order, tenant: tenant)),
                 const SizedBox(height: 16),
                 if (!printerConnected)
                   Container(
@@ -384,25 +469,20 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                       color: AppTheme.accentOrange.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: AppTheme.accentOrange.withValues(alpha: 0.3),
-                      ),
+                          color:
+                              AppTheme.accentOrange.withValues(alpha: 0.3)),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(
-                          Icons.print_disabled_rounded,
-                          color: AppTheme.accentOrange,
-                          size: 18,
-                        ),
+                        Icon(Icons.print_disabled_rounded,
+                            color: AppTheme.accentOrange, size: 18),
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Impresora no conectada. Configure una en el menu.',
-                            style: TextStyle(
-                              color: AppTheme.accentOrange,
-                              fontSize: 12,
-                            ),
-                          ),
+                              'Impresora no conectada. Configure una en el menu.',
+                              style: TextStyle(
+                                  color: AppTheme.accentOrange,
+                                  fontSize: 12)),
                         ),
                       ],
                     ),
@@ -413,26 +493,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         ),
         actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actionsAlignment: MainAxisAlignment.center,
-        actionsOverflowDirection: VerticalDirection.down,
         actions: [
-          // "Otro equipo" prominent button
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () {
-                Navigator.pop(ctx);
-                _resetForNewEquipment();
-              },
-              icon: Icon(Icons.add_rounded, size: 20),
-              label: Text('Agregar otro equipo (mismo cliente)'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.accentPurple,
-                side: BorderSide(color: AppTheme.accentPurple),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
@@ -449,16 +510,17 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () async {
-                      final success = await _printerService.printReceptionTicket(
+                      final success =
+                          await _printerService.printReceptionTicket(
                         order: order,
                         tenant: tenant,
                       );
                       if (ctx.mounted) {
                         ScaffoldMessenger.of(ctx).showSnackBar(
                           SnackBar(
-                            content: Text(
-                              success ? 'Ticket impreso' : 'Error al imprimir',
-                            ),
+                            content: Text(success
+                                ? 'Ticket impreso'
+                                : 'Error al imprimir'),
                             backgroundColor: success
                                 ? AppTheme.accentGreen
                                 : AppTheme.accentRed,
@@ -466,7 +528,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                         );
                         Navigator.pop(ctx);
                         Navigator.pop(context);
-                        context.read<OrdersBloc>().add(OrdersLoadRequested());
+                        context
+                            .read<OrdersBloc>()
+                            .add(OrdersLoadRequested());
                       }
                     },
                     icon: Icon(Icons.print_rounded, size: 18),
@@ -480,26 +544,192 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     );
   }
 
-  void _resetForNewEquipment() {
-    setState(() {
-      // Keep customer data, reset device/photos/problem
-      _selectedType = null;
-      _selectedBrand = null;
-      _deviceModelCtrl.clear();
-      _deviceSerialCtrl.clear();
-      _deviceColorCtrl.clear();
-      _accessoriesCtrl.clear();
-      _photos.clear();
-      _problemCtrl.clear();
-      _selectedTechnicianId = null;
-      _currentStep = 1; // Jump to device step
-    });
+  Future<void> _showMultipleTicketDialog(
+      List<ServiceOrder> orders, String groupId) async {
+    final tenant =
+        _tenant ?? Tenant(id: '', name: 'Servicio Tecnico', slug: 'default');
+    final printerConnected = await _printerService.hasSavedPrinter;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor,
+        title: Row(
+          children: [
+            Icon(Icons.check_circle_rounded,
+                color: AppTheme.accentGreen, size: 28),
+            SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${orders.length} ordenes creadas',
+                      style: TextStyle(
+                          color: AppTheme.textPrimary, fontSize: 18)),
+                  Text(
+                      orders.map((o) => o.orderNumber).join(', '),
+                      style: TextStyle(
+                          color: AppTheme.accentCyan, fontSize: 12)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 380,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Show summary of all devices
+                ...orders.map((order) => GlassCard(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(10),
+                      borderColor:
+                          AppTheme.accentCyan.withValues(alpha: 0.3),
+                      child: Row(
+                        children: [
+                          Icon(_getTypeIcon(null),
+                              color: AppTheme.accentCyan, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  order.orderNumber,
+                                  style: TextStyle(
+                                    color: AppTheme.accentCyan,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                Text(
+                                  '${order.device?.type ?? ''} ${order.device?.brand ?? ''} ${order.device?.model ?? ''}',
+                                  style: TextStyle(
+                                      color: AppTheme.textPrimary,
+                                      fontSize: 12),
+                                ),
+                                Text(
+                                  order.problemReported,
+                                  style: TextStyle(
+                                      color: AppTheme.textSecondary,
+                                      fontSize: 11),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )),
+                const SizedBox(height: 8),
+                if (!printerConnected)
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentOrange.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color:
+                              AppTheme.accentOrange.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.print_disabled_rounded,
+                            color: AppTheme.accentOrange, size: 18),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                              'Impresora no conectada.',
+                              style: TextStyle(
+                                  color: AppTheme.accentOrange,
+                                  fontSize: 12)),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    Navigator.pop(context);
+                    context.read<OrdersBloc>().add(OrdersLoadRequested());
+                  },
+                  child: const Text('Cerrar'),
+                ),
+              ),
+              if (printerConnected)
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      int printed = 0;
+                      for (final order in orders) {
+                        final ok =
+                            await _printerService.printReceptionTicket(
+                          order: order,
+                          tenant: tenant,
+                        );
+                        if (ok) printed++;
+                      }
+                      if (ctx.mounted) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                                '$printed/${orders.length} tickets impresos'),
+                            backgroundColor: printed > 0
+                                ? AppTheme.accentGreen
+                                : AppTheme.accentRed,
+                          ),
+                        );
+                        Navigator.pop(ctx);
+                        Navigator.pop(context);
+                        context
+                            .read<OrdersBloc>()
+                            .add(OrdersLoadRequested());
+                      }
+                    },
+                    icon: Icon(Icons.print_rounded, size: 18),
+                    label: Text('Imprimir todos'),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Nueva Orden')),
+      appBar: AppBar(
+        title: Text('Nueva Orden'),
+        actions: [
+          if (_devices.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: Chip(
+                avatar: Icon(Icons.devices_rounded,
+                    size: 16, color: AppTheme.accentCyan),
+                label: Text('${_devices.length} equipo(s)',
+                    style: TextStyle(fontSize: 12)),
+              ),
+            ),
+        ],
+      ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -513,6 +743,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             if (state is OrderCreated) {
               _showTicketDialog(state.order);
             }
+            if (state is OrdersMultipleCreated) {
+              _showMultipleTicketDialog(state.orders, state.groupId);
+            }
             if (state is OrdersError) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -525,17 +758,24 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           child: Form(
             key: _formKey,
             child: Theme(
-              data: Theme.of(
-                context,
-              ).copyWith(canvasColor: AppTheme.surfaceColor),
+              data: Theme.of(context)
+                  .copyWith(canvasColor: AppTheme.surfaceColor),
               child: Stepper(
                 currentStep: _currentStep,
                 onStepContinue: () {
-                  if (!_validateStep(_currentStep)) return;
-                  if (_currentStep < 3) {
+                  if (_currentStep == 1) {
+                    // On device step, must have at least one device
+                    if (_devices.isEmpty) {
+                      _showError(
+                          'Agregue al menos un equipo antes de continuar');
+                      return;
+                    }
+                    setState(() => _currentStep++);
+                  } else if (_currentStep < 2) {
+                    if (!_validateStep(_currentStep)) return;
                     setState(() => _currentStep++);
                   } else {
-                    _createOrder();
+                    _createOrders();
                   }
                 },
                 onStepCancel: () {
@@ -556,7 +796,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                                 ? null
                                 : details.onStepContinue,
                             child: Text(
-                              _currentStep == 3 ? 'Crear Orden' : 'Siguiente',
+                              _currentStep == 2
+                                  ? 'Crear ${_devices.length > 1 ? '${_devices.length} Ordenes' : 'Orden'}'
+                                  : 'Siguiente',
                             ),
                           ),
                         ),
@@ -573,10 +815,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 },
                 steps: [
                   Step(
-                    title: Text(
-                      'Cliente',
-                      style: TextStyle(color: AppTheme.textPrimary),
-                    ),
+                    title: Text('Cliente',
+                        style: TextStyle(color: AppTheme.textPrimary)),
                     isActive: _currentStep >= 0,
                     state: _currentStep > 0
                         ? StepState.complete
@@ -585,33 +825,19 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   ),
                   Step(
                     title: Text(
-                      'Equipo',
-                      style: TextStyle(color: AppTheme.textPrimary),
-                    ),
+                        'Equipos${_devices.isNotEmpty ? ' (${_devices.length})' : ''}',
+                        style: TextStyle(color: AppTheme.textPrimary)),
                     isActive: _currentStep >= 1,
                     state: _currentStep > 1
                         ? StepState.complete
                         : StepState.indexed,
-                    content: _deviceStep(),
+                    content: _devicesStep(),
                   ),
                   Step(
-                    title: Text(
-                      'Fotos',
-                      style: TextStyle(color: AppTheme.textPrimary),
-                    ),
+                    title: Text('Confirmar',
+                        style: TextStyle(color: AppTheme.textPrimary)),
                     isActive: _currentStep >= 2,
-                    state: _currentStep > 2
-                        ? StepState.complete
-                        : StepState.indexed,
-                    content: _photosStep(),
-                  ),
-                  Step(
-                    title: Text(
-                      'Problema',
-                      style: TextStyle(color: AppTheme.textPrimary),
-                    ),
-                    isActive: _currentStep >= 3,
-                    content: _problemStep(),
+                    content: _confirmStep(),
                   ),
                 ],
               ),
@@ -653,7 +879,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         ),
         SizedBox(height: 16),
 
-        // Mode 0: Search existing
         if (_customerMode == 0) ...[
           TextField(
             controller: _customerSearchCtrl,
@@ -671,14 +896,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             ),
           ..._customerResults.map(
             (c) => ListTile(
-              title: Text(
-                c.fullName,
-                style: TextStyle(color: AppTheme.textPrimary),
-              ),
-              subtitle: Text(
-                '${c.idNumber} - ${c.phone}',
-                style: TextStyle(color: AppTheme.textSecondary),
-              ),
+              title: Text(c.fullName,
+                  style: TextStyle(color: AppTheme.textPrimary)),
+              subtitle: Text('${c.idNumber} - ${c.phone}',
+                  style: TextStyle(color: AppTheme.textSecondary)),
               selected: _selectedCustomer?.id == c.id,
               onTap: () => setState(() {
                 _selectedCustomer = c;
@@ -693,10 +914,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               padding: EdgeInsets.all(12),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.check_circle_rounded,
-                    color: AppTheme.accentGreen,
-                  ),
+                  Icon(Icons.check_circle_rounded,
+                      color: AppTheme.accentGreen),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -709,24 +928,15 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             ),
         ],
 
-        // Mode 1: New customer
         if (_customerMode == 1) ...[
           _field(_newNameCtrl, 'Nombre completo *', required: true),
           _field(_newIdCtrl, 'Cedula / NIT *', required: true),
-          _field(
-            _newPhoneCtrl,
-            'Telefono *',
-            required: true,
-            keyboard: TextInputType.phone,
-          ),
-          _field(
-            _newEmailCtrl,
-            'Email (opcional)',
-            keyboard: TextInputType.emailAddress,
-          ),
+          _field(_newPhoneCtrl, 'Telefono *',
+              required: true, keyboard: TextInputType.phone),
+          _field(_newEmailCtrl, 'Email (opcional)',
+              keyboard: TextInputType.emailAddress),
         ],
 
-        // Mode 2: Express
         if (_customerMode == 2)
           GlassCard(
             borderColor: AppTheme.accentOrange.withValues(alpha: 0.4),
@@ -739,20 +949,14 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Text('Servicio Express',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimary)),
                       Text(
-                        'Servicio Express',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                      Text(
-                        'Se creara un registro anonimo con trazabilidad. El cliente no necesita dar sus datos.',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
+                          'Se creara un registro anonimo con trazabilidad.',
+                          style: TextStyle(
+                              color: AppTheme.textSecondary, fontSize: 12)),
                     ],
                   ),
                 ),
@@ -763,26 +967,48 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     );
   }
 
-  // ---- STEP 2: DEVICE ----
-  Widget _deviceStep() {
+  // ---- STEP 2: DEVICES ----
+  Widget _devicesStep() {
     if (_loadingCatalog) {
       return Center(
-        child: CircularProgressIndicator(color: AppTheme.accentCyan),
-      );
+          child: CircularProgressIndicator(color: AppTheme.accentCyan));
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Device type selector
+        // Show already added devices
+        if (_devices.isNotEmpty) ...[
+          Text('Equipos agregados',
+              style: TextStyle(
+                  color: AppTheme.accentGreen,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          ..._devices.asMap().entries.map((e) => _deviceCard(e.key, e.value)),
+          const SizedBox(height: 16),
+          Divider(color: AppTheme.dividerColor),
+          const SizedBox(height: 16),
+        ],
+
+        // Form for adding new device
         Text(
-          'Tipo de equipo',
+          _devices.isEmpty
+              ? 'Datos del equipo'
+              : 'Agregar otro equipo',
           style: TextStyle(
-            color: AppTheme.textSecondary,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
+              color: AppTheme.accentCyan,
+              fontSize: 14,
+              fontWeight: FontWeight.w700),
         ),
+        const SizedBox(height: 12),
+
+        // Device type
+        Text('Tipo de equipo',
+            style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600)),
         SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -790,11 +1016,11 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           children: _deviceTypes.map((t) {
             final selected = _selectedType?.id == t.id;
             return ChoiceChip(
-              avatar: Icon(
-                _getTypeIcon(t.icon),
-                size: 16,
-                color: selected ? AppTheme.accentCyan : AppTheme.textSecondary,
-              ),
+              avatar: Icon(_getTypeIcon(t.icon),
+                  size: 16,
+                  color: selected
+                      ? AppTheme.accentCyan
+                      : AppTheme.textSecondary),
               label: Text(t.name),
               selected: selected,
               onSelected: (_) => setState(() {
@@ -806,16 +1032,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         ),
         SizedBox(height: 20),
 
-        // Brand selector
+        // Brand
         if (_selectedType != null) ...[
-          Text(
-            'Marca',
-            style: TextStyle(
-              color: AppTheme.textSecondary,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          Text('Marca',
+              style: TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -835,26 +1058,30 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         _field(_deviceModelCtrl, 'Modelo *', required: true),
         _field(_deviceSerialCtrl, 'Serial / IMEI *', required: true),
         _field(_deviceColorCtrl, 'Color (opcional)'),
-        _field(
-          _accessoriesCtrl,
-          'Accesorios *',
-          required: true,
-          hint: 'Cargador, Funda, Audifonos',
-        ),
-      ],
-    );
-  }
+        _field(_accessoriesCtrl, 'Accesorios *',
+            required: true, hint: 'Cargador, Funda, Audifonos'),
 
-  // ---- STEP 3: PHOTOS ----
-  Widget _photosStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Toma fotos del estado actual del equipo',
-          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+        // Problem for THIS device
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _problemCtrl,
+          style: TextStyle(color: AppTheme.textPrimary),
+          decoration: InputDecoration(
+            labelText: 'Problema de este equipo *',
+            hintText: 'Describa el problema reportado...',
+            alignLabelWithHint: true,
+          ),
+          maxLines: 3,
         ),
         const SizedBox(height: 12),
+
+        // Photos for this device
+        Text('Fotos del equipo (opcional)',
+            style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
         Wrap(
           spacing: 10,
           runSpacing: 10,
@@ -864,29 +1091,22 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      e.value,
-                      width: 90,
-                      height: 90,
-                      fit: BoxFit.cover,
-                    ),
+                    child: Image.file(e.value,
+                        width: 70, height: 70, fit: BoxFit.cover),
                   ),
                   Positioned(
                     right: 0,
                     top: 0,
                     child: GestureDetector(
-                      onTap: () => setState(() => _photos.removeAt(e.key)),
+                      onTap: () =>
+                          setState(() => _photos.removeAt(e.key)),
                       child: Container(
                         padding: const EdgeInsets.all(2),
                         decoration: const BoxDecoration(
-                          color: AppTheme.accentRed,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.close,
-                          color: Colors.white,
-                          size: 16,
-                        ),
+                            color: AppTheme.accentRed,
+                            shape: BoxShape.circle),
+                        child: Icon(Icons.close,
+                            color: Colors.white, size: 14),
                       ),
                     ),
                   ),
@@ -894,84 +1114,32 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               ),
             ),
             if (_photos.length < _maxPhotos)
-            InkWell(
-              onTap: _takePhoto,
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                width: 90,
-                height: 90,
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppTheme.dividerColor),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.add_a_photo_rounded,
-                      color: AppTheme.textSecondary,
-                      size: 24,
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Agregar',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                  ],
+              InkWell(
+                onTap: _takePhoto,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppTheme.dividerColor),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.add_a_photo_rounded,
+                      color: AppTheme.textSecondary, size: 20),
                 ),
               ),
-            ),
           ],
         ),
-        if (_photos.isEmpty)
-          Padding(
-            padding: EdgeInsets.only(top: 8),
-            child: Text(
-              'Opcional pero recomendado',
-              style: TextStyle(fontSize: 11, color: AppTheme.accentOrange),
-            ),
-          ),
-      ],
-    );
-  }
+        const SizedBox(height: 12),
 
-  // ---- STEP 4: PROBLEM + TECHNICIAN ----
-  Widget _problemStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextFormField(
-          controller: _problemCtrl,
-          style: TextStyle(color: AppTheme.textPrimary),
-          decoration: InputDecoration(
-            labelText: 'Descripcion del problema *',
-            hintText: 'Describa el problema reportado...',
-            alignLabelWithHint: true,
-          ),
-          maxLines: 4,
-          validator: (v) => v?.isEmpty == true ? 'Requerido' : null,
-        ),
-        SizedBox(height: 20),
-
-        // Technician assignment (optional)
-        Text(
-          'Asignar tecnico (opcional)',
-          style: TextStyle(
-            color: AppTheme.textSecondary,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        SizedBox(height: 8),
-        if (_technicians.isEmpty)
-          Text(
-            'No hay tecnicos registrados',
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-          )
-        else
+        // Technician (optional)
+        if (_technicians.isNotEmpty) ...[
+          Text('Tecnico (opcional)',
+              style: TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -979,33 +1147,238 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               ChoiceChip(
                 label: Text('Sin asignar'),
                 selected: _selectedTechnicianId == null,
-                onSelected: (_) => setState(() => _selectedTechnicianId = null),
+                onSelected: (_) =>
+                    setState(() => _selectedTechnicianId = null),
               ),
               ..._technicians.map((t) {
                 final selected = _selectedTechnicianId == t['id'];
                 return ChoiceChip(
-                  avatar: CircleAvatar(
-                    radius: 12,
-                    backgroundColor: selected
-                        ? AppTheme.accentPurple
-                        : AppTheme.surfaceColor,
-                    child: Text(
-                      (t['fullName'] as String)[0].toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: selected ? Colors.white : AppTheme.textSecondary,
-                      ),
-                    ),
-                  ),
                   label: Text(t['fullName'] as String),
                   selected: selected,
-                  onSelected: (_) =>
-                      setState(() => _selectedTechnicianId = t['id'] as String),
+                  onSelected: (_) => setState(
+                      () => _selectedTechnicianId = t['id'] as String),
                 );
               }),
             ],
           ),
+          const SizedBox(height: 16),
+        ],
+
+        // Add device button
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              if (_addCurrentDevice()) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(
+                      'Equipo #${_devices.length} agregado. Puede agregar mas o continuar.'),
+                  backgroundColor: AppTheme.accentGreen,
+                  duration: Duration(seconds: 2),
+                ));
+              }
+            },
+            icon: Icon(Icons.add_rounded),
+            label: Text(_devices.isEmpty
+                ? 'Agregar equipo'
+                : 'Agregar otro equipo'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.accentPurple,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _deviceCard(int index, _DeviceEntry device) {
+    return GlassCard(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      borderColor: AppTheme.accentCyan.withValues(alpha: 0.4),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: AppTheme.accentCyan.withValues(alpha: 0.2),
+            child: Text('${index + 1}',
+                style: TextStyle(
+                    color: AppTheme.accentCyan,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(device.summary,
+                    style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13)),
+                Text('S/N: ${device.serial}',
+                    style: TextStyle(
+                        color: AppTheme.textSecondary, fontSize: 11)),
+                Text(device.problem,
+                    style: TextStyle(
+                        color: AppTheme.textSecondary, fontSize: 11),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                if (device.photos.isNotEmpty)
+                  Text('${device.photos.length} foto(s)',
+                      style: TextStyle(
+                          color: AppTheme.accentOrange, fontSize: 10)),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => setState(() => _devices.removeAt(index)),
+            icon: Icon(Icons.delete_rounded,
+                color: AppTheme.accentRed, size: 20),
+            tooltip: 'Eliminar equipo',
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---- STEP 3: CONFIRM ----
+  Widget _confirmStep() {
+    final clientName = _customerMode == 2
+        ? 'Cliente Express'
+        : _customerMode == 1
+            ? _newNameCtrl.text.trim()
+            : _selectedCustomer?.fullName ?? '-';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GlassCard(
+          borderColor: AppTheme.accentBlue.withValues(alpha: 0.3),
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Icon(Icons.person_rounded,
+                  color: AppTheme.accentBlue, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Cliente',
+                        style: TextStyle(
+                            color: AppTheme.textSecondary, fontSize: 11)),
+                    Text(clientName,
+                        style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        Text(
+            '${_devices.length} equipo(s) a registrar:',
+            style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+
+        ..._devices.asMap().entries.map((e) {
+          final d = e.value;
+          return GlassCard(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            borderColor: AppTheme.accentCyan.withValues(alpha: 0.3),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 14,
+                      backgroundColor:
+                          AppTheme.accentCyan.withValues(alpha: 0.2),
+                      child: Text('${e.key + 1}',
+                          style: TextStyle(
+                              color: AppTheme.accentCyan,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12)),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(d.summary,
+                          style: TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                _confirmRow('Serial', d.serial),
+                if (d.color != null) _confirmRow('Color', d.color!),
+                _confirmRow('Accesorios', d.accessories.join(', ')),
+                _confirmRow('Problema', d.problem),
+                if (d.photos.isNotEmpty)
+                  _confirmRow('Fotos', '${d.photos.length}'),
+              ],
+            ),
+          );
+        }),
+
+        if (_devices.length > 1)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: GlassCard(
+              borderColor: AppTheme.accentPurple.withValues(alpha: 0.3),
+              padding: const EdgeInsets.all(10),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline_rounded,
+                      color: AppTheme.accentPurple, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Se crearan ${_devices.length} ordenes individuales agrupadas. Cada equipo tendra su propio diagnostico y flujo de reparacion.',
+                      style: TextStyle(
+                          color: AppTheme.textSecondary, fontSize: 11),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _confirmRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 38, bottom: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(label,
+                style: TextStyle(
+                    color: AppTheme.textSecondary, fontSize: 11)),
+          ),
+          Expanded(
+            child: Text(value,
+                style: TextStyle(
+                    color: AppTheme.textPrimary, fontSize: 11)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1024,9 +1397,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         style: TextStyle(color: AppTheme.textPrimary),
         decoration: InputDecoration(labelText: label, hintText: hint),
         keyboardType: keyboard,
-        validator: required
-            ? (v) => v?.isEmpty == true ? 'Requerido' : null
-            : null,
       ),
     );
   }

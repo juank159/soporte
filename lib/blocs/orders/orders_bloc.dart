@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../models/service_order.dart';
@@ -19,6 +20,33 @@ class OrdersLoadRequested extends OrdersEvent {
 
   @override
   List<Object?> get props => [statusFilter, search, dateFrom, dateTo];
+}
+
+/// Data for a single device in a multi-device order
+class DeviceData {
+  final String deviceType;
+  final String deviceBrand;
+  final String deviceModel;
+  final String problemReported;
+  final String? deviceSerial;
+  final String? deviceImei;
+  final String? deviceColor;
+  final List<String>? accessories;
+  final List<File>? photos;
+  final String? technicianId;
+
+  DeviceData({
+    required this.deviceType,
+    required this.deviceBrand,
+    required this.deviceModel,
+    required this.problemReported,
+    this.deviceSerial,
+    this.deviceImei,
+    this.deviceColor,
+    this.accessories,
+    this.photos,
+    this.technicianId,
+  });
 }
 
 class OrderCreateRequested extends OrdersEvent {
@@ -50,6 +78,19 @@ class OrderCreateRequested extends OrdersEvent {
 
   @override
   List<Object?> get props => [customerId, deviceType, deviceBrand];
+}
+
+class OrderCreateMultipleRequested extends OrdersEvent {
+  final String customerId;
+  final List<DeviceData> devices;
+
+  OrderCreateMultipleRequested({
+    required this.customerId,
+    required this.devices,
+  });
+
+  @override
+  List<Object?> get props => [customerId, devices.length];
 }
 
 class OrderStatusUpdateRequested extends OrdersEvent {
@@ -93,6 +134,15 @@ class OrderCreated extends OrdersState {
   List<Object?> get props => [order.id];
 }
 
+class OrdersMultipleCreated extends OrdersState {
+  final List<ServiceOrder> orders;
+  final String groupId;
+  OrdersMultipleCreated(this.orders, this.groupId);
+
+  @override
+  List<Object?> get props => [groupId];
+}
+
 class OrdersError extends OrdersState {
   final String message;
   OrdersError(this.message);
@@ -108,6 +158,7 @@ class OrdersBloc extends Bloc<OrdersEvent, OrdersState> {
   OrdersBloc() : super(OrdersInitial()) {
     on<OrdersLoadRequested>(_onLoadRequested);
     on<OrderCreateRequested>(_onCreateRequested);
+    on<OrderCreateMultipleRequested>(_onCreateMultipleRequested);
     on<OrderStatusUpdateRequested>(_onStatusUpdateRequested);
   }
 
@@ -150,6 +201,45 @@ class OrdersBloc extends Bloc<OrdersEvent, OrdersState> {
       emit(OrderCreated(order));
     } catch (e) {
       emit(OrdersError('Error al crear la orden'));
+    }
+  }
+
+  static String _generateGroupId() {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final rand = Random().nextInt(999999);
+    return 'GRP-$now-$rand';
+  }
+
+  Future<void> _onCreateMultipleRequested(
+    OrderCreateMultipleRequested event,
+    Emitter<OrdersState> emit,
+  ) async {
+    emit(OrdersLoading());
+    try {
+      final groupId = _generateGroupId();
+      final orders = <ServiceOrder>[];
+
+      for (final device in event.devices) {
+        final order = await _orderService.createOrder(
+          customerId: event.customerId,
+          deviceType: device.deviceType,
+          deviceBrand: device.deviceBrand,
+          deviceModel: device.deviceModel,
+          problemReported: device.problemReported,
+          deviceSerial: device.deviceSerial,
+          deviceImei: device.deviceImei,
+          deviceColor: device.deviceColor,
+          accessories: device.accessories,
+          technicianId: device.technicianId,
+          photos: device.photos,
+          groupId: groupId,
+        );
+        orders.add(order);
+      }
+
+      emit(OrdersMultipleCreated(orders, groupId));
+    } catch (e) {
+      emit(OrdersError('Error al crear las órdenes'));
     }
   }
 

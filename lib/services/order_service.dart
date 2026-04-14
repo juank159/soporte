@@ -29,6 +29,13 @@ class OrderService {
     return ServiceOrder.fromJson(response.data);
   }
 
+  Future<List<ServiceOrder>> getGroupedOrders(String groupId) async {
+    final response = await _api.dio.get('/orders/group/$groupId');
+    return (response.data as List)
+        .map((e) => ServiceOrder.fromJson(e))
+        .toList();
+  }
+
   Future<ServiceOrder> createOrder({
     required String customerId,
     required String deviceType,
@@ -41,6 +48,7 @@ class OrderService {
     List<String>? accessories,
     String? technicianId,
     List<File>? photos,
+    String? groupId,
   }) async {
     final data = {
       'customerId': customerId,
@@ -53,6 +61,7 @@ class OrderService {
       'deviceColor': deviceColor,
       'accessories': accessories,
       'technicianId': technicianId,
+      'groupId': groupId,
     };
 
     // Create order first WITHOUT photos
