@@ -235,7 +235,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   String? _nextEquipmentStatus(String current) {
-    const flow = ['received', 'diagnosing', 'repairing', 'quality_check', 'ready', 'delivered'];
+    const flow = ['received', 'diagnosing', 'repairing', 'ready', 'delivered'];
     final idx = flow.indexOf(current);
     if (idx >= 0 && idx < flow.length - 1) return flow[idx + 1];
     return null;
@@ -547,13 +547,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       case 'diagnosing':
         return 'repairing';
       case 'repairing':
-        return 'quality_check';
-      case 'quality_check':
         return 'ready';
       case 'ready':
         return 'delivered';
-      case 'delivered':
-        return 'closed';
       default:
         return null;
     }
@@ -565,14 +561,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         return 'Iniciar Diagnostico';
       case 'repairing':
         return 'Iniciar Reparacion';
-      case 'quality_check':
-        return 'Enviar a Control Calidad';
       case 'ready':
         return 'Marcar como Listo';
       case 'delivered':
         return 'Registrar Entrega';
-      case 'closed':
-        return 'Cerrar Orden';
       default:
         return 'Siguiente';
     }
@@ -584,14 +576,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         return Icons.search_rounded;
       case 'repairing':
         return Icons.build_rounded;
-      case 'quality_check':
-        return Icons.verified_rounded;
       case 'ready':
         return Icons.check_circle_rounded;
       case 'delivered':
         return Icons.local_shipping_rounded;
-      case 'closed':
-        return Icons.lock_rounded;
       default:
         return Icons.arrow_forward_rounded;
     }
@@ -616,7 +604,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             itemBuilder: (_) {
               final items = <PopupMenuEntry<String>>[];
               // Reimprimir ticket (solo si no está cerrada)
-              if (_order.status != 'closed') {
+              if (_order.status != 'delivered') {
                 items.add(PopupMenuItem(
                   value: 'print_ticket',
                   child: Row(children: [
@@ -627,7 +615,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 ));
               }
               // Reimprimir acta (solo si está entregada o cerrada)
-              if (_order.status == 'delivered' || _order.status == 'closed') {
+              if (_order.status == 'delivered') {
                 items.add(PopupMenuItem(
                   value: 'print_acta',
                   child: Row(children: [
@@ -780,7 +768,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           // Assign technician warning
           if (_order.technicianId == null &&
               _order.status != 'delivered' &&
-              _order.status != 'closed') ...[
+              _order.status != 'delivered') ...[
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
@@ -799,7 +787,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           // Return button (only for single-device orders)
           if (_order.equipments.isEmpty &&
               _order.status != 'delivered' &&
-              _order.status != 'closed' &&
+              _order.status != 'delivered' &&
               _order.status != 'returned') ...[
             const SizedBox(height: 8),
             SizedBox(
@@ -817,7 +805,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           ],
 
           // Action button (only for single-device orders)
-          if (_order.equipments.isEmpty && _nextStatus != null && _order.status != 'closed' && _order.status != 'returned') ...[
+          if (_order.equipments.isEmpty && _nextStatus != null && _order.status != 'delivered' && _order.status != 'returned') ...[
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -900,21 +888,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         hintText = 'Ej: Se procedera con cambio de pantalla, limpieza de placa...';
         defaultNote = '';
         break;
-      case 'quality_check':
-        labelText = 'Observaciones (opcional)';
-        hintText = 'Ej: Se verifico funcionamiento correcto...';
-        defaultNote = 'Reparacion completada, enviado a control de calidad';
-        break;
       case 'ready':
         labelText = 'Observaciones (opcional)';
-        hintText = '';
+        hintText = 'Ej: Reparacion completada, equipo funcionando...';
         final equipo = '${_order.device?.brand ?? ''} ${_order.device?.model ?? ''}'.trim();
         defaultNote = 'El equipo $equipo esta listo para entrega';
-        break;
-      case 'closed':
-        labelText = 'Observaciones (opcional)';
-        hintText = '';
-        defaultNote = 'Orden cerrada';
         break;
       default:
         labelText = 'Notas (opcional)';
@@ -989,11 +967,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       case 'received': return 'Recibido';
       case 'diagnosing': return 'En Diagnostico';
       case 'repairing': return 'En Reparacion';
-      case 'quality_check': return 'Control de Calidad';
-      case 'ready': return 'Listo para Entrega';
+      case 'ready': return 'Listo';
       case 'returned': return 'Devuelto';
       case 'delivered': return 'Entregado';
-      case 'closed': return 'Cerrado';
       default: return status;
     }
   }
@@ -1003,10 +979,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       ('received', 'Recibido', Icons.inbox_rounded),
       ('diagnosing', 'Diagnostico', Icons.search_rounded),
       ('repairing', 'Reparacion', Icons.build_rounded),
-      ('quality_check', 'Calidad', Icons.verified_rounded),
       ('ready', 'Listo', Icons.check_circle_rounded),
       ('delivered', 'Entregado', Icons.local_shipping_rounded),
-      ('closed', 'Cerrado', Icons.lock_rounded),
     ];
 
     final currentIndex =
@@ -1101,8 +1075,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           _infoRow('Creada', AppDateUtils.format(_order.createdAt)),
           if (_order.deliveredAt != null)
             _infoRow('Entregada', AppDateUtils.format(_order.deliveredAt!)),
-          if (_order.closedAt != null)
-            _infoRow('Cerrada', AppDateUtils.format(_order.closedAt!)),
           if (_order.warrantyDays > 0)
             _infoRow('Garantia', '${_order.warrantyDays} dias'),
         ]),
@@ -1214,7 +1186,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   if (eq.diagnosis != null) _infoRow('Diagnostico', eq.diagnosis!),
                   if (eq.warrantyDays > 0) _infoRow('Garantia', '${eq.warrantyDays} dias'),
                   // Action buttons
-                  if (eq.status != 'delivered' && eq.status != 'closed') ...[
+                  if (eq.status != 'delivered') ...[
                     const SizedBox(height: 10),
                     Row(children: [
                       if (nextEqStatus != null)

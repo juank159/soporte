@@ -481,7 +481,7 @@ class _DashboardHome extends StatelessWidget {
         o.createdAt.month == today.month &&
         o.createdAt.day == today.day).length;
     final pendingOrders = orders.where((o) =>
-        o.status != 'delivered' && o.status != 'closed').length;
+        o.status != 'delivered' && o.status != 'returned').length;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -642,8 +642,6 @@ Color statusColor(String status) {
       return AppTheme.accentOrange;
     case 'repairing':
       return AppTheme.accentPurple;
-    case 'quality_check':
-      return Color(0xFFEAB308);
     case 'ready':
       return AppTheme.accentGreen;
     case 'returned':

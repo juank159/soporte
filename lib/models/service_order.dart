@@ -77,11 +77,9 @@ class OrderEquipment {
       case 'received': return 'Recibido';
       case 'diagnosing': return 'En Diagnostico';
       case 'repairing': return 'En Reparacion';
-      case 'quality_check': return 'Control de Calidad';
-      case 'ready': return 'Listo para Entrega';
+      case 'ready': return 'Listo';
       case 'returned': return 'Devuelto';
       case 'delivered': return 'Entregado';
-      case 'closed': return 'Cerrado';
       default: return status;
     }
   }
@@ -188,16 +186,12 @@ class ServiceOrder {
         return 'En Diagnostico';
       case 'repairing':
         return 'En Reparacion';
-      case 'quality_check':
-        return 'Control de Calidad';
       case 'ready':
-        return 'Listo para Entrega';
+        return 'Listo';
       case 'returned':
         return 'Devuelto';
       case 'delivered':
         return 'Entregado';
-      case 'closed':
-        return 'Cerrado';
       default:
         return status;
     }

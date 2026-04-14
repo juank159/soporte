@@ -102,7 +102,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
 
   Future<void> _printActasBatch(List<ServiceOrder> orders) async {
     final delivered = orders
-        .where((o) => o.status == 'delivered' || o.status == 'closed')
+        .where((o) => o.status == 'delivered')
         .toList();
 
     if (delivered.isEmpty) {
@@ -165,8 +165,8 @@ class _OrderListScreenState extends State<OrderListScreen> {
     ('diagnosing', 'Diagnostico', Icons.search_rounded),
     ('repairing', 'Reparacion', Icons.build_rounded),
     ('ready', 'Listos', Icons.check_circle_rounded),
+    ('returned', 'Devueltos', Icons.undo_rounded),
     ('delivered', 'Entregados', Icons.local_shipping_rounded),
-    ('closed', 'Cerrados', Icons.lock_rounded),
   ];
 
   void _showFilterDialog() {
@@ -506,8 +506,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                                               overflow: TextOverflow.ellipsis),
                                         ),
                                         if (order.total > 0 &&
-                                            (order.status == 'delivered' ||
-                                                order.status == 'closed'))
+                                            order.status == 'delivered')
                                           Text(
                                             '\$${formatMoney(order.total)}',
                                             style: const TextStyle(

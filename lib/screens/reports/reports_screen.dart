@@ -134,9 +134,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
     if (_dashboard == null) return SizedBox.shrink();
     final c = (_dashboard!['statusCounts'] as Map<String, dynamic>?) ?? {};
     final s = [('received','Recibidos',AppTheme.accentBlue,Icons.inbox_rounded),('diagnosing','Diagnostico',AppTheme.accentOrange,Icons.search_rounded),
-      ('repairing','Reparacion',AppTheme.accentPurple,Icons.build_rounded),('quality_check','Calidad',Color(0xFFEAB308),Icons.verified_rounded),
-      ('ready','Listos',AppTheme.accentGreen,Icons.check_circle_rounded),('delivered','Entregados',AppTheme.accentCyan,Icons.local_shipping_rounded),
-      ('closed','Cerrados',AppTheme.textSecondary,Icons.lock_rounded)];
+      ('repairing','Reparacion',AppTheme.accentPurple,Icons.build_rounded),
+      ('ready','Listos',AppTheme.accentGreen,Icons.check_circle_rounded),('returned','Devueltos',AppTheme.accentRed,Icons.undo_rounded),
+      ('delivered','Entregados',AppTheme.accentCyan,Icons.local_shipping_rounded)];
     return GlassCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [Icon(Icons.pie_chart_rounded, color: AppTheme.accentCyan, size:20), SizedBox(width:8),
         Text('Por estado', style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary, fontSize:15))]),
@@ -154,7 +154,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Widget _staleCard() {
     final d=_staleOrders!; final cr=d['critical'] as int?? 0; final w=d['warning'] as int?? 0; final o=(d['orders'] as List?) ?? [];
     final cl = cr>0 ? AppTheme.accentRed : AppTheme.accentOrange;
-    final lb = {'received':'Recibido','diagnosing':'Diagnostico','repairing':'Reparacion','quality_check':'Calidad','ready':'Listo'};
+    final lb = {'received':'Recibido','diagnosing':'Diagnostico','repairing':'Reparacion','ready':'Listo'};
     return GlassCard(borderColor: cl.withValues(alpha:0.4), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [Container(padding: EdgeInsets.all(10), decoration: BoxDecoration(color: cl.withValues(alpha:0.12), borderRadius: BorderRadius.circular(10)),
         child: Icon(Icons.warning_rounded, color:cl, size:22)), SizedBox(width:12),

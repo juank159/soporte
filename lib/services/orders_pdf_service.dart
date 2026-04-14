@@ -77,13 +77,13 @@ class OrdersPdfService {
                   _summaryBox('Total', '${orders.length}'),
                   pw.SizedBox(width: 12),
                   _summaryBox('Pendientes',
-                      '${orders.where((o) => o.status != 'delivered' && o.status != 'closed').length}'),
+                      '${orders.where((o) => o.status != 'delivered' && o.status != 'returned').length}'),
                   pw.SizedBox(width: 12),
                   _summaryBox('Entregadas',
-                      '${orders.where((o) => o.status == 'delivered' || o.status == 'closed').length}'),
+                      '${orders.where((o) => o.status == 'delivered').length}'),
                   pw.SizedBox(width: 12),
                   _summaryBox('Ingresos',
-                      '\$${formatMoney(orders.where((o) => o.status == 'delivered' || o.status == 'closed').fold(0.0, (sum, o) => sum + o.total))}'),
+                      '\$${formatMoney(orders.where((o) => o.status == 'delivered').fold(0.0, (sum, o) => sum + o.total))}'),
                 ]),
                 pw.SizedBox(height: 10),
 
@@ -179,10 +179,9 @@ class OrdersPdfService {
       case 'received': return 'Recibido';
       case 'diagnosing': return 'Diagnostico';
       case 'repairing': return 'Reparacion';
-      case 'quality_check': return 'Calidad';
       case 'ready': return 'Listo';
+      case 'returned': return 'Devuelto';
       case 'delivered': return 'Entregado';
-      case 'closed': return 'Cerrado';
       default: return status;
     }
   }
