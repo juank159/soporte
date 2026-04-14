@@ -190,30 +190,34 @@ class TicketPreviewWidget extends StatelessWidget {
 
           // Multiple equipments
           if (order.equipments.isNotEmpty) ...[
-            _sectionTitle('EQUIPOS (${order.equipments.length})'),
             ...order.equipments.asMap().entries.expand((e) {
               final i = e.key;
               final eq = e.value;
               return [
-                if (i > 0) const Divider(color: _lightGrey, height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    '${i + 1}. ${eq.deviceType} ${eq.deviceBrand} ${eq.deviceModel}',
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _black),
-                  ),
-                ),
+                _sectionTitle('EQUIPO ${i + 1}'),
+                _row('Tipo:', eq.deviceType),
+                _row('Marca:', eq.deviceBrand),
+                _row('Modelo:', eq.deviceModel),
                 if (eq.deviceSerial != null)
-                  _row('  Serial:', eq.deviceSerial!),
-                if (eq.accessories != null && eq.accessories!.isNotEmpty)
-                  _row('  Accesorios:', eq.accessories!.join(', ')),
+                  _row('Serial:', eq.deviceSerial!),
+                if (eq.deviceColor != null)
+                  _row('Color:', eq.deviceColor!),
+                if (eq.accessories != null && eq.accessories!.isNotEmpty) ...[
+                  _sectionTitle('ACCESORIOS'),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(eq.accessories!.join(', '),
+                        style: const TextStyle(fontSize: 10, color: _black)),
+                  ),
+                ],
+                _sectionTitle('PROBLEMA'),
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Text(
-                    '  Problema: ${eq.problemReported}',
-                    style: const TextStyle(fontSize: 9, color: _grey),
-                  ),
+                  child: Text(eq.problemReported,
+                      style: const TextStyle(fontSize: 10, color: _black)),
                 ),
+                if (i < order.equipments.length - 1)
+                  const Divider(color: _grey, height: 12),
               ];
             }),
           ],
