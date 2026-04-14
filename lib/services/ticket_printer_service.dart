@@ -423,12 +423,13 @@ class TicketPrinterService {
                     style: const pw.TextStyle(fontSize: 7)),
               ),
             ],
-            // Multiple equipments - same clean format as single device
+            // Multiple equipments
             if (order.equipments.isNotEmpty) ...[
               ...order.equipments.asMap().entries.expand((e) {
                 final i = e.key;
                 final eq = e.value;
                 return [
+                  if (i > 0) pw.SizedBox(height: 2),
                   pw.Divider(),
                   pw.Align(
                     alignment: pw.Alignment.centerLeft,
@@ -442,28 +443,9 @@ class TicketPrinterService {
                     _pdfRow('Serial', eq.deviceSerial!),
                   if (eq.deviceColor != null)
                     _pdfRow('Color', eq.deviceColor!),
-                  if (eq.accessories != null && eq.accessories!.isNotEmpty) ...[
-                    pw.Align(
-                      alignment: pw.Alignment.centerLeft,
-                      child: pw.Text('ACCESORIOS',
-                          style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                    ),
-                    pw.Align(
-                      alignment: pw.Alignment.centerLeft,
-                      child: pw.Text(eq.accessories!.join(', '),
-                          style: const pw.TextStyle(fontSize: 7)),
-                    ),
-                  ],
-                  pw.Align(
-                    alignment: pw.Alignment.centerLeft,
-                    child: pw.Text('PROBLEMA',
-                        style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                  ),
-                  pw.Align(
-                    alignment: pw.Alignment.centerLeft,
-                    child: pw.Text(eq.problemReported,
-                        style: const pw.TextStyle(fontSize: 7)),
-                  ),
+                  if (eq.accessories != null && eq.accessories!.isNotEmpty)
+                    _pdfRow('Accesorios', eq.accessories!.join(', ')),
+                  _pdfRow('Problema', eq.problemReported),
                 ];
               }),
             ],
@@ -582,17 +564,9 @@ class TicketPrinterService {
           gen.printTwoColumns('Serial:', eq.deviceSerial!);
         if (eq.deviceColor != null)
           gen.printTwoColumns('Color:', eq.deviceColor!);
-        if (eq.accessories != null && eq.accessories!.isNotEmpty) {
-          gen.printSeparator();
-          gen.setBold(true);
-          gen.printLine('ACCESORIOS');
-          gen.setBold(false);
-          gen.printLine(_s(eq.accessories!.join(', ')));
-        }
-        gen.printSeparator();
-        gen.setBold(true);
-        gen.printLine('PROBLEMA');
-        gen.setBold(false);
+        if (eq.accessories != null && eq.accessories!.isNotEmpty)
+          gen.printTwoColumns('Acces.:', _s(eq.accessories!.join(', ')));
+        gen.printTwoColumns('Problema:', '');
         for (final l in _w(_s(eq.problemReported), 48)) gen.printLine(l);
       }
     }

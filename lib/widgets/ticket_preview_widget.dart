@@ -194,6 +194,8 @@ class TicketPreviewWidget extends StatelessWidget {
               final i = e.key;
               final eq = e.value;
               return [
+                if (i > 0)
+                  const Divider(color: _grey, height: 12),
                 _sectionTitle('EQUIPO ${i + 1}'),
                 _row('Tipo:', eq.deviceType),
                 _row('Marca:', eq.deviceBrand),
@@ -202,22 +204,9 @@ class TicketPreviewWidget extends StatelessWidget {
                   _row('Serial:', eq.deviceSerial!),
                 if (eq.deviceColor != null)
                   _row('Color:', eq.deviceColor!),
-                if (eq.accessories != null && eq.accessories!.isNotEmpty) ...[
-                  _sectionTitle('ACCESORIOS'),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(eq.accessories!.join(', '),
-                        style: const TextStyle(fontSize: 10, color: _black)),
-                  ),
-                ],
-                _sectionTitle('PROBLEMA'),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(eq.problemReported,
-                      style: const TextStyle(fontSize: 10, color: _black)),
-                ),
-                if (i < order.equipments.length - 1)
-                  const Divider(color: _grey, height: 12),
+                if (eq.accessories != null && eq.accessories!.isNotEmpty)
+                  _row('Accesorios:', eq.accessories!.join(', ')),
+                _row('Problema:', eq.problemReported),
               ];
             }),
           ],
