@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import '../models/service_order.dart';
 import '../blocs/orders/orders_bloc.dart';
 import 'api_service.dart';
@@ -35,7 +36,6 @@ class OrderService {
     required List<EquipmentData> equipments,
     List<File>? photos,
   }) async {
-    // Send first device as flat fields (always works with any backend version)
     final eq = equipments[0];
     final data = <String, dynamic>{
       'customerId': customerId,
@@ -49,41 +49,56 @@ class OrderService {
     if (eq.accessories != null) data['accessories'] = eq.accessories;
     if (eq.technicianId != null) data['technicianId'] = eq.technicianId;
 
-    // Create order
-    final response = await _api.dio.post('/orders', data: data);
-    final order = ServiceOrder.fromJson(response.data);
+    // If multiple equipments, send the full array for the new backend
+    if (equipments.length > 1) {
+      data['equipments'] = equipments.map((e) {
+        final m = <String, dynamic>{
+          'deviceType': e.deviceType,
+          'deviceBrand': e.deviceBrand,
+          'deviceModel': e.deviceModel,
+          'problemReported': e.problemReported,
+        };
+        if (e.deviceSerial != null) m['deviceSerial'] = e.deviceSerial;
+        if (e.deviceColor != null) m['deviceColor'] = e.deviceColor;
+        if (e.accessories != null) m['accessories'] = e.accessories;
+        if (e.technicianId != null) m['technicianId'] = e.technicianId;
+        return m;
+      }).toList();
+    }
 
-    // Upload photos for first device
-    final firstPhotos = photos ?? (eq.photos != null && eq.photos!.isNotEmpty ? eq.photos! : null);
-    if (firstPhotos != null) {
-      for (final photo in firstPhotos) {
-        try {
-          final bytes = await photo.readAsBytes();
-          final b64 = 'data:image/jpeg;base64,${base64Encode(bytes)}';
-          await _api.dio.post('/orders/${order.id}/photos', data: {
-            'photoUrl': b64,
-            'stage': 'reception',
-          });
-        } catch (_) {}
+    // Try creating - if backend rejects 'equipments', retry without it
+    dynamic response;
+    try {
+      response = await _api.dio.post('/orders', data: data);
+    } catch (e) {
+      if (data.containsKey('equipments')) {
+        debugPrint('Backend rejected equipments field, retrying without...');
+        data.remove('equipments');
+        response = await _api.dio.post('/orders', data: data);
+      } else {
+        rethrow;
       }
     }
 
-    // If multi-device, upload remaining device photos too
-    if (equipments.length > 1) {
-      for (int i = 1; i < equipments.length; i++) {
-        final extra = equipments[i];
-        if (extra.photos != null && extra.photos!.isNotEmpty) {
-          for (final photo in extra.photos!) {
-            try {
-              final bytes = await photo.readAsBytes();
-              final b64 = 'data:image/jpeg;base64,${base64Encode(bytes)}';
-              await _api.dio.post('/orders/${order.id}/photos', data: {
-                'photoUrl': b64,
-                'description': '${extra.deviceType} ${extra.deviceBrand} ${extra.deviceModel}',
-                'stage': 'reception',
-              });
-            } catch (_) {}
-          }
+    final order = ServiceOrder.fromJson(response.data);
+
+    // Upload photos
+    for (int i = 0; i < equipments.length; i++) {
+      final device = equipments[i];
+      final devicePhotos = (i == 0 && photos != null) ? photos : device.photos;
+      if (devicePhotos != null && devicePhotos.isNotEmpty) {
+        for (final photo in devicePhotos) {
+          try {
+            final bytes = await photo.readAsBytes();
+            final b64 = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+            await _api.dio.post('/orders/${order.id}/photos', data: {
+              'photoUrl': b64,
+              'description': equipments.length > 1
+                  ? '${device.deviceType} ${device.deviceBrand} ${device.deviceModel}'
+                  : null,
+              'stage': 'reception',
+            });
+          } catch (_) {}
         }
       }
     }
@@ -143,7 +158,6 @@ class OrderService {
       {String? description, String stage = 'reception'}) async {
     final bytes = await photo.readAsBytes();
     final base64Photo = 'data:image/jpeg;base64,${base64Encode(bytes)}';
-
     await _api.dio.post('/orders/$orderId/photos', data: {
       'photoUrl': base64Photo,
       'description': description,

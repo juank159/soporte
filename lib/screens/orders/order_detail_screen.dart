@@ -224,6 +224,120 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     child: Icon(Icons.broken_image_rounded, color: AppTheme.textSecondary),
   );
 
+  Widget _equipRow(String label, String value, {Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SizedBox(width: 80, child: Text(label, style: TextStyle(color: AppTheme.textSecondary, fontSize: 11))),
+        Expanded(child: Text(value, style: TextStyle(color: color ?? AppTheme.textPrimary, fontSize: 11))),
+      ]),
+    );
+  }
+
+  String? _nextEquipmentStatus(String current) {
+    const flow = ['received', 'diagnosing', 'repairing', 'quality_check', 'ready', 'delivered'];
+    final idx = flow.indexOf(current);
+    if (idx >= 0 && idx < flow.length - 1) return flow[idx + 1];
+    return null;
+  }
+
+  Future<void> _changeEquipmentStatus(String equipmentId, String newStatus) async {
+    final notesCtrl = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor,
+        title: Text('Cambiar estado', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text('Estado: ${_nextStatusLabel(newStatus)}',
+              style: TextStyle(color: AppTheme.accentCyan, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 12),
+          TextField(
+            controller: notesCtrl,
+            style: TextStyle(color: AppTheme.textPrimary),
+            decoration: InputDecoration(labelText: 'Notas (opcional)', hintText: 'Que se hizo...'),
+            maxLines: 2,
+          ),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirmar')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await _orderService.updateEquipmentStatus(
+        _order.id, equipmentId, newStatus, notes: notesCtrl.text.trim().isNotEmpty ? notesCtrl.text.trim() : null,
+      );
+      _refreshOrder();
+      _loadHistory();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.accentRed));
+      }
+    }
+  }
+
+  Future<void> _returnEquipment(OrderEquipment eq) async {
+    final notesCtrl = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor,
+        title: Row(children: [
+          Icon(Icons.undo_rounded, color: AppTheme.accentRed),
+          const SizedBox(width: 8),
+          Expanded(child: Text('Devolver ${eq.summary}',
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 15))),
+        ]),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text('Este equipo sera devuelto sin reparar.',
+              style: TextStyle(color: AppTheme.textSecondary)),
+          const SizedBox(height: 12),
+          TextField(
+            controller: notesCtrl,
+            style: TextStyle(color: AppTheme.textPrimary),
+            decoration: InputDecoration(
+              labelText: 'Motivo de devolucion *',
+              hintText: 'Ej: Cliente no aprobo el costo...',
+            ),
+            maxLines: 3,
+          ),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentRed),
+            onPressed: () {
+              if (notesCtrl.text.trim().isEmpty) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  SnackBar(content: Text('Ingrese el motivo'), backgroundColor: AppTheme.accentOrange));
+                return;
+              }
+              Navigator.pop(ctx, true);
+            },
+            child: const Text('Confirmar devolucion'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await _orderService.updateEquipmentStatus(
+        _order.id, eq.id, 'returned', notes: notesCtrl.text.trim(),
+      );
+      _refreshOrder();
+      _loadHistory();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.accentRed));
+      }
+    }
+  }
+
   void _showFullPhotoUrl(String url) {
     showDialog(
       context: context,
@@ -962,18 +1076,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           if (_order.customer?.email != null)
             _infoRow('Email', _order.customer!.email!),
         ]),
-        _sectionCard('Equipo', Icons.devices_rounded, AppTheme.accentPurple, [
-          _infoRow('Tipo', _order.device?.type ?? '-'),
-          _infoRow('Marca', _order.device?.brand ?? '-'),
-          _infoRow('Modelo', _order.device?.model ?? '-'),
-          if (_order.device?.serial != null)
-            _infoRow('Serial', _order.device!.serial!),
-          if (_order.device?.color != null)
-            _infoRow('Color', _order.device!.color!),
-          if (_order.device?.accessories != null &&
-              _order.device!.accessories!.isNotEmpty)
-            _infoRow('Accesorios', _order.device!.accessories!.join(', ')),
-        ]),
+        // Single device (legacy orders without equipments)
+        if (_order.equipments.isEmpty && _order.device != null)
+          _sectionCard('Equipo', Icons.devices_rounded, AppTheme.accentPurple, [
+            _infoRow('Tipo', _order.device?.type ?? '-'),
+            _infoRow('Marca', _order.device?.brand ?? '-'),
+            _infoRow('Modelo', _order.device?.model ?? '-'),
+            if (_order.device?.serial != null)
+              _infoRow('Serial', _order.device!.serial!),
+            if (_order.device?.color != null)
+              _infoRow('Color', _order.device!.color!),
+            if (_order.device?.accessories != null &&
+                _order.device!.accessories!.isNotEmpty)
+              _infoRow('Accesorios', _order.device!.accessories!.join(', ')),
+          ]),
         _sectionCard('Fechas', Icons.schedule_rounded, AppTheme.textSecondary, [
           _infoRow('Creada', AppDateUtils.format(_order.createdAt)),
           if (_order.deliveredAt != null)
@@ -1039,62 +1155,111 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         if (_order.equipments.isNotEmpty)
           _sectionCard('Equipos (${_order.equipments.length})', Icons.devices_other_rounded,
               AppTheme.accentPurple, [
-            ..._order.equipments.map((eq) => Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surfaceColor,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: statusColor(eq.status).withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
+            ..._order.equipments.asMap().entries.map((entry) {
+              final i = entry.key;
+              final eq = entry.value;
+              final eqColor = statusColor(eq.status);
+              final nextEqStatus = _nextEquipmentStatus(eq.status);
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceColor,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: eqColor.withValues(alpha: 0.4)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header: number + name + status badge
+                    Row(children: [
+                      CircleAvatar(
+                        radius: 14,
+                        backgroundColor: eqColor.withValues(alpha: 0.2),
+                        child: Text('${i + 1}',
+                            style: TextStyle(color: eqColor, fontWeight: FontWeight.w700, fontSize: 12)),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(eq.summary,
+                            style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 13)),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: eqColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: eqColor.withValues(alpha: 0.3)),
+                        ),
+                        child: Text(eq.statusLabel,
+                            style: TextStyle(color: eqColor, fontSize: 10, fontWeight: FontWeight.w700)),
+                      ),
+                    ]),
+                    const SizedBox(height: 8),
+                    // Details
+                    if (eq.deviceSerial != null)
+                      _equipRow('Serial', eq.deviceSerial!),
+                    if (eq.deviceColor != null)
+                      _equipRow('Color', eq.deviceColor!),
+                    if (eq.accessories != null && eq.accessories!.isNotEmpty)
+                      _equipRow('Accesorios', eq.accessories!.join(', ')),
+                    _equipRow('Problema', eq.problemReported),
+                    if (eq.diagnosis != null)
+                      _equipRow('Diagnostico', eq.diagnosis!, color: AppTheme.accentCyan),
+                    if (eq.warrantyDays > 0)
+                      _equipRow('Garantia', '${eq.warrantyDays} dias'),
+                    // Action buttons per equipment
+                    if (eq.status != 'delivered' && eq.status != 'closed') ...[
+                      const SizedBox(height: 8),
+                      Row(children: [
+                        // Advance status
+                        if (nextEqStatus != null)
                           Expanded(
-                            child: Text(eq.summary,
-                                style: TextStyle(
-                                    color: AppTheme.textPrimary,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13)),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: statusColor(eq.status).withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(4),
+                            child: SizedBox(
+                              height: 32,
+                              child: ElevatedButton(
+                                onPressed: () => _changeEquipmentStatus(eq.id, nextEqStatus),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: eqColor,
+                                  padding: EdgeInsets.zero,
+                                  textStyle: const TextStyle(fontSize: 11),
+                                ),
+                                child: Text(_nextStatusLabel(nextEqStatus)),
+                              ),
                             ),
-                            child: Text(eq.statusLabel,
-                                style: TextStyle(
-                                    color: statusColor(eq.status),
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700)),
+                          ),
+                        // Return button
+                        if (eq.status != 'returned') ...[
+                          const SizedBox(width: 6),
+                          SizedBox(
+                            height: 32,
+                            child: OutlinedButton(
+                              onPressed: () => _returnEquipment(eq),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppTheme.accentRed,
+                                side: BorderSide(color: AppTheme.accentRed.withValues(alpha: 0.5)),
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                textStyle: const TextStyle(fontSize: 11),
+                              ),
+                              child: const Text('Devolver'),
+                            ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 4),
-                      if (eq.deviceSerial != null)
-                        Text('S/N: ${eq.deviceSerial}',
-                            style: TextStyle(
-                                color: AppTheme.textSecondary, fontSize: 11)),
-                      Text('Problema: ${eq.problemReported}',
-                          style: TextStyle(
-                              color: AppTheme.textSecondary, fontSize: 11),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis),
-                      if (eq.diagnosis != null)
-                        Text('Diagnostico: ${eq.diagnosis}',
-                            style: TextStyle(
-                                color: AppTheme.accentCyan, fontSize: 11),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis),
+                      ]),
                     ],
-                  ),
-                )),
+                    if (eq.status == 'returned')
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Row(children: [
+                          Icon(Icons.undo_rounded, color: AppTheme.accentRed, size: 14),
+                          const SizedBox(width: 4),
+                          Text('Equipo devuelto', style: TextStyle(color: AppTheme.accentRed, fontSize: 11, fontWeight: FontWeight.w600)),
+                        ]),
+                      ),
+                  ],
+                ),
+              );
+            }),
           ]),
       ],
     );
