@@ -411,53 +411,70 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             ),
           ),
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actionsAlignment: MainAxisAlignment.center,
+        actionsOverflowDirection: VerticalDirection.down,
         actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              Navigator.pop(context);
-              context.read<OrdersBloc>().add(OrdersLoadRequested());
-            },
-            child: const Text('Omitir'),
-          ),
-          TextButton.icon(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _resetForNewEquipment();
-            },
-            icon: Icon(Icons.add_rounded, color: AppTheme.accentPurple),
-            label: Text(
-              'Otro equipo',
-              style: TextStyle(color: AppTheme.accentPurple),
-            ),
-          ),
-          if (printerConnected) ...[
-            ElevatedButton.icon(
-              onPressed: () async {
-                final success = await _printerService.printReceptionTicket(
-                  order: order,
-                  tenant: tenant,
-                );
-                if (ctx.mounted) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        success ? 'Ticket impreso' : 'Error al imprimir',
-                      ),
-                      backgroundColor: success
-                          ? AppTheme.accentGreen
-                          : AppTheme.accentRed,
-                    ),
-                  );
-                  Navigator.pop(ctx);
-                  Navigator.pop(context);
-                  context.read<OrdersBloc>().add(OrdersLoadRequested());
-                }
+          // "Otro equipo" prominent button
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _resetForNewEquipment();
               },
-              icon: Icon(Icons.print_rounded),
-              label: Text('Imprimir'),
+              icon: Icon(Icons.add_rounded, size: 20),
+              label: Text('Agregar otro equipo (mismo cliente)'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.accentPurple,
+                side: BorderSide(color: AppTheme.accentPurple),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
             ),
-          ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    Navigator.pop(context);
+                    context.read<OrdersBloc>().add(OrdersLoadRequested());
+                  },
+                  child: const Text('Cerrar'),
+                ),
+              ),
+              if (printerConnected)
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final success = await _printerService.printReceptionTicket(
+                        order: order,
+                        tenant: tenant,
+                      );
+                      if (ctx.mounted) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              success ? 'Ticket impreso' : 'Error al imprimir',
+                            ),
+                            backgroundColor: success
+                                ? AppTheme.accentGreen
+                                : AppTheme.accentRed,
+                          ),
+                        );
+                        Navigator.pop(ctx);
+                        Navigator.pop(context);
+                        context.read<OrdersBloc>().add(OrdersLoadRequested());
+                      }
+                    },
+                    icon: Icon(Icons.print_rounded, size: 18),
+                    label: Text('Imprimir'),
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
     );
