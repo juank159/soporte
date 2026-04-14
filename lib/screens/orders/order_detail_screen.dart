@@ -665,6 +665,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               _timeline(),
               const SizedBox(height: 16),
 
+              // Equipments grid (full width, above columns)
+              if (_order.equipments.isNotEmpty) ...[
+                _equipmentsGrid(),
+                const SizedBox(height: 12),
+              ],
+
               // Content - responsive grid
               LayoutBuilder(
                 builder: (context, constraints) {
@@ -790,8 +796,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ),
           ],
 
-          // Return button (available for non-delivered/closed/returned orders)
-          if (_order.status != 'delivered' &&
+          // Return button (only for single-device orders)
+          if (_order.equipments.isEmpty &&
+              _order.status != 'delivered' &&
               _order.status != 'closed' &&
               _order.status != 'returned') ...[
             const SizedBox(height: 8),
@@ -809,8 +816,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ),
           ],
 
-          // Action button
-          if (_nextStatus != null && _order.status != 'closed' && _order.status != 'returned') ...[
+          // Action button (only for single-device orders)
+          if (_order.equipments.isEmpty && _nextStatus != null && _order.status != 'closed' && _order.status != 'returned') ...[
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -1151,97 +1158,115 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ),
           ]),
 
-        // Multiple equipment in this order
-        if (_order.equipments.isNotEmpty)
-          ..._order.equipments.asMap().entries.map((entry) {
+      ],
+    );
+  }
+
+  // Equipment grid (full width, uniform cards)
+  Widget _equipmentsGrid() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        // 2 columns on wide, 1 on mobile
+        final crossCount = w > 700 ? 2 : 1;
+        final spacing = 12.0;
+        final cardWidth = (w - spacing * (crossCount - 1)) / crossCount;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: _order.equipments.asMap().entries.map((entry) {
             final i = entry.key;
             final eq = entry.value;
             final eqColor = statusColor(eq.status);
             final nextEqStatus = _nextEquipmentStatus(eq.status);
-            return _sectionCard(
-              'Equipo ${i + 1}',
-              Icons.devices_rounded,
-              eqColor,
-              [
-                // Status badge
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: eqColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: eqColor.withValues(alpha: 0.3)),
+
+            return SizedBox(
+              width: crossCount == 1 ? w : cardWidth,
+              child: _sectionCard(
+                'Equipo ${i + 1}',
+                Icons.devices_rounded,
+                eqColor,
+                [
+                  // Status badge
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: eqColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: eqColor.withValues(alpha: 0.3)),
+                      ),
+                      child: Text(eq.statusLabel,
+                          style: TextStyle(color: eqColor, fontSize: 11, fontWeight: FontWeight.w700)),
                     ),
-                    child: Text(eq.statusLabel,
-                        style: TextStyle(color: eqColor, fontSize: 11, fontWeight: FontWeight.w700)),
                   ),
-                ),
-                const SizedBox(height: 8),
-                _infoRow('Tipo', eq.deviceType),
-                _infoRow('Marca', eq.deviceBrand),
-                _infoRow('Modelo', eq.deviceModel),
-                if (eq.deviceSerial != null)
-                  _infoRow('Serial', eq.deviceSerial!),
-                if (eq.deviceColor != null)
-                  _infoRow('Color', eq.deviceColor!),
-                if (eq.accessories != null && eq.accessories!.isNotEmpty)
-                  _infoRow('Accesorios', eq.accessories!.join(', ')),
-                _infoRow('Problema', eq.problemReported),
-                if (eq.diagnosis != null)
-                  _infoRow('Diagnostico', eq.diagnosis!),
-                if (eq.warrantyDays > 0)
-                  _infoRow('Garantia', '${eq.warrantyDays} dias'),
-                // Action buttons per equipment
-                if (eq.status != 'delivered' && eq.status != 'closed') ...[
-                  const SizedBox(height: 10),
-                  Row(children: [
-                    if (nextEqStatus != null)
-                      Expanded(
-                        child: SizedBox(
-                          height: 34,
-                          child: ElevatedButton.icon(
-                            onPressed: () => _changeEquipmentStatus(eq.id, nextEqStatus),
-                            icon: Icon(Icons.arrow_forward_rounded, size: 16),
-                            label: Text(_nextStatusLabel(nextEqStatus), style: TextStyle(fontSize: 11)),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: eqColor,
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                  const SizedBox(height: 8),
+                  _infoRow('Tipo', eq.deviceType),
+                  _infoRow('Marca', eq.deviceBrand),
+                  _infoRow('Modelo', eq.deviceModel),
+                  if (eq.deviceSerial != null) _infoRow('Serial', eq.deviceSerial!),
+                  if (eq.deviceColor != null) _infoRow('Color', eq.deviceColor!),
+                  if (eq.accessories != null && eq.accessories!.isNotEmpty)
+                    _infoRow('Accesorios', eq.accessories!.join(', ')),
+                  _infoRow('Problema', eq.problemReported),
+                  if (eq.diagnosis != null) _infoRow('Diagnostico', eq.diagnosis!),
+                  if (eq.warrantyDays > 0) _infoRow('Garantia', '${eq.warrantyDays} dias'),
+                  // Action buttons
+                  if (eq.status != 'delivered' && eq.status != 'closed') ...[
+                    const SizedBox(height: 10),
+                    Row(children: [
+                      if (nextEqStatus != null)
+                        Expanded(
+                          child: SizedBox(
+                            height: 34,
+                            child: ElevatedButton.icon(
+                              onPressed: () => _changeEquipmentStatus(eq.id, nextEqStatus),
+                              icon: Icon(Icons.arrow_forward_rounded, size: 16),
+                              label: Text(_nextStatusLabel(nextEqStatus),
+                                  style: TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: eqColor,
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    if (eq.status != 'returned') ...[
-                      const SizedBox(width: 8),
-                      SizedBox(
-                        height: 34,
-                        child: OutlinedButton.icon(
-                          onPressed: () => _returnEquipment(eq),
-                          icon: Icon(Icons.undo_rounded, size: 14),
-                          label: Text('Devolver', style: TextStyle(fontSize: 11)),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppTheme.accentRed,
-                            side: BorderSide(color: AppTheme.accentRed.withValues(alpha: 0.5)),
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                      if (eq.status != 'returned') ...[
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          height: 34,
+                          child: OutlinedButton.icon(
+                            onPressed: () => _returnEquipment(eq),
+                            icon: Icon(Icons.undo_rounded, size: 14),
+                            label: Text('Devolver', style: TextStyle(fontSize: 11)),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppTheme.accentRed,
+                              side: BorderSide(color: AppTheme.accentRed.withValues(alpha: 0.5)),
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ]),
-                ],
-                if (eq.status == 'returned')
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Row(children: [
-                      Icon(Icons.undo_rounded, color: AppTheme.accentRed, size: 16),
-                      const SizedBox(width: 6),
-                      Text('Equipo devuelto', style: TextStyle(color: AppTheme.accentRed, fontSize: 12, fontWeight: FontWeight.w600)),
+                      ],
                     ]),
-                  ),
-              ],
+                  ],
+                  if (eq.status == 'returned')
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Row(children: [
+                        Icon(Icons.undo_rounded, color: AppTheme.accentRed, size: 16),
+                        const SizedBox(width: 6),
+                        Text('Equipo devuelto',
+                            style: TextStyle(color: AppTheme.accentRed, fontSize: 12, fontWeight: FontWeight.w600)),
+                      ]),
+                    ),
+                ],
+              ),
             );
-          }),
-      ],
+          }).toList(),
+        );
+      },
     );
   }
 
