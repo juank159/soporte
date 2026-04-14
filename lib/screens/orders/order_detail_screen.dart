@@ -278,6 +278,61 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     } catch (_) {}
   }
 
+  void _showReturnDialog() {
+    final notesCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(children: [
+          Icon(Icons.undo_rounded, color: AppTheme.accentRed),
+          const SizedBox(width: 10),
+          Text('Devolver equipo',
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
+        ]),
+        content: Form(
+          key: formKey,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text(
+              'El equipo sera devuelto al cliente sin reparar.',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: notesCtrl,
+              style: TextStyle(color: AppTheme.textPrimary),
+              decoration: InputDecoration(
+                labelText: 'Motivo de la devolucion *',
+                hintText: 'Ej: Cliente no aprobo el costo de reparacion...',
+                alignLabelWithHint: true,
+              ),
+              maxLines: 3,
+              validator: (v) => v == null || v.trim().isEmpty
+                  ? 'Ingrese el motivo' : null,
+            ),
+          ]),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.accentRed,
+            ),
+            onPressed: () {
+              if (formKey.currentState?.validate() != true) return;
+              Navigator.pop(ctx);
+              _changeStatus('returned', notes: notesCtrl.text.trim());
+            },
+            child: const Text('Confirmar devolucion'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _showAssignTechnicianDialog() async {
     List<User> techs = [];
     try {
@@ -620,8 +675,27 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ),
           ],
 
+          // Return button (available for non-delivered/closed/returned orders)
+          if (_order.status != 'delivered' &&
+              _order.status != 'closed' &&
+              _order.status != 'returned') ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _showReturnDialog(),
+                icon: const Icon(Icons.undo_rounded, size: 18),
+                label: const Text('Devolver equipo'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.accentRed,
+                  side: BorderSide(color: AppTheme.accentRed),
+                ),
+              ),
+            ),
+          ],
+
           // Action button
-          if (_nextStatus != null && _order.status != 'closed') ...[
+          if (_nextStatus != null && _order.status != 'closed' && _order.status != 'returned') ...[
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -795,6 +869,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       case 'repairing': return 'En Reparacion';
       case 'quality_check': return 'Control de Calidad';
       case 'ready': return 'Listo para Entrega';
+      case 'returned': return 'Devuelto';
       case 'delivered': return 'Entregado';
       case 'closed': return 'Cerrado';
       default: return status;

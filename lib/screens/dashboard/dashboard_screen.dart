@@ -646,6 +646,8 @@ Color statusColor(String status) {
       return Color(0xFFEAB308);
     case 'ready':
       return AppTheme.accentGreen;
+    case 'returned':
+      return AppTheme.accentRed;
     case 'delivered':
       return AppTheme.accentCyan;
     default:

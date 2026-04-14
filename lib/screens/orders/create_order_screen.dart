@@ -420,7 +420,18 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             },
             child: const Text('Omitir'),
           ),
-          if (printerConnected)
+          TextButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _resetForNewEquipment();
+            },
+            icon: Icon(Icons.add_rounded, color: AppTheme.accentPurple),
+            label: Text(
+              'Otro equipo',
+              style: TextStyle(color: AppTheme.accentPurple),
+            ),
+          ),
+          if (printerConnected) ...[
             ElevatedButton.icon(
               onPressed: () async {
                 final success = await _printerService.printReceptionTicket(
@@ -444,11 +455,28 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                 }
               },
               icon: Icon(Icons.print_rounded),
-              label: Text('Imprimir ticket'),
+              label: Text('Imprimir'),
             ),
+          ],
         ],
       ),
     );
+  }
+
+  void _resetForNewEquipment() {
+    setState(() {
+      // Keep customer data, reset device/photos/problem
+      _selectedType = null;
+      _selectedBrand = null;
+      _deviceModelCtrl.clear();
+      _deviceSerialCtrl.clear();
+      _deviceColorCtrl.clear();
+      _accessoriesCtrl.clear();
+      _photos.clear();
+      _problemCtrl.clear();
+      _selectedTechnicianId = null;
+      _currentStep = 1; // Jump to device step
+    });
   }
 
   @override

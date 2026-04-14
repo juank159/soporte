@@ -97,6 +97,8 @@ class ServiceOrder {
         return 'Control de Calidad';
       case 'ready':
         return 'Listo para Entrega';
+      case 'returned':
+        return 'Devuelto';
       case 'delivered':
         return 'Entregado';
       case 'closed':
