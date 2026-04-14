@@ -156,36 +156,67 @@ class TicketPreviewWidget extends StatelessWidget {
           _row('Cedula:', order.customer?.idNumber ?? '-'),
           _row('Tel:', order.customer?.phone ?? '-'),
 
-          _sectionTitle('DATOS DEL EQUIPO'),
-          _row('Tipo:', order.device?.type ?? '-'),
-          _row('Marca:', order.device?.brand ?? '-'),
-          _row('Modelo:', order.device?.model ?? '-'),
-          if (order.device?.serial != null)
-            _row('Serial:', order.device!.serial!),
-          if (order.device?.color != null) _row('Color:', order.device!.color!),
-          if (technicianName != null && technicianName!.isNotEmpty)
-            _row('Tecnico:', technicianName!),
-
-          if (order.device?.accessories != null &&
-              order.device!.accessories!.isNotEmpty) ...[
-            _sectionTitle('ACCESORIOS'),
+          // Single device (legacy)
+          if (order.equipments.isEmpty && order.device != null) ...[
+            _sectionTitle('DATOS DEL EQUIPO'),
+            _row('Tipo:', order.device?.type ?? '-'),
+            _row('Marca:', order.device?.brand ?? '-'),
+            _row('Modelo:', order.device?.model ?? '-'),
+            if (order.device?.serial != null)
+              _row('Serial:', order.device!.serial!),
+            if (order.device?.color != null) _row('Color:', order.device!.color!),
+            if (technicianName != null && technicianName!.isNotEmpty)
+              _row('Tecnico:', technicianName!),
+            if (order.device?.accessories != null &&
+                order.device!.accessories!.isNotEmpty) ...[
+              _sectionTitle('ACCESORIOS'),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  order.device!.accessories!.join(', '),
+                  style: const TextStyle(fontSize: 10, color: _black),
+                ),
+              ),
+            ],
+            _sectionTitle('PROBLEMA'),
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                order.device!.accessories!.join(', '),
+                order.problemReported,
                 style: const TextStyle(fontSize: 10, color: _black),
               ),
             ),
           ],
 
-          _sectionTitle('PROBLEMA'),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              order.problemReported,
-              style: const TextStyle(fontSize: 10, color: _black),
-            ),
-          ),
+          // Multiple equipments
+          if (order.equipments.isNotEmpty) ...[
+            _sectionTitle('EQUIPOS (${order.equipments.length})'),
+            ...order.equipments.asMap().entries.expand((e) {
+              final i = e.key;
+              final eq = e.value;
+              return [
+                if (i > 0) const Divider(color: _lightGrey, height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '${i + 1}. ${eq.deviceType} ${eq.deviceBrand} ${eq.deviceModel}',
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _black),
+                  ),
+                ),
+                if (eq.deviceSerial != null)
+                  _row('  Serial:', eq.deviceSerial!),
+                if (eq.accessories != null && eq.accessories!.isNotEmpty)
+                  _row('  Accesorios:', eq.accessories!.join(', ')),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '  Problema: ${eq.problemReported}',
+                    style: const TextStyle(fontSize: 9, color: _grey),
+                  ),
+                ),
+              ];
+            }),
+          ],
 
           if (tenant.legalNotice != null && tenant.legalNotice!.isNotEmpty) ...[
             const Divider(color: _grey, height: 16),

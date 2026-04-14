@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../models/service_order.dart';
@@ -133,7 +135,8 @@ class OrdersBloc extends Bloc<OrdersEvent, OrdersState> {
           dateTo: event.dateTo);
       emit(OrdersLoaded(orders));
     } catch (e) {
-      emit(OrdersError('Error al cargar ordenes'));
+      debugPrint('LOAD ORDERS ERROR: $e');
+      emit(OrdersError('Error al cargar ordenes: $e'));
     }
   }
 
@@ -150,7 +153,12 @@ class OrdersBloc extends Bloc<OrdersEvent, OrdersState> {
       );
       emit(OrderCreated(order));
     } catch (e) {
-      emit(OrdersError('Error al crear la orden'));
+      String errorMsg = '$e';
+      if (e is DioException && e.response != null) {
+        errorMsg = '${e.response?.statusCode}: ${e.response?.data}';
+      }
+      debugPrint('CREATE ORDER ERROR: $errorMsg');
+      emit(OrdersError('Error: $errorMsg'));
     }
   }
 

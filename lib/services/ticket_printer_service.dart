@@ -385,60 +385,73 @@ class TicketPrinterService {
             _pdfRow('Cedula', order.customer?.idNumber ?? '-'),
             _pdfRow('Tel', order.customer?.phone ?? '-'),
             pw.Divider(),
-            pw.Align(
-              alignment: pw.Alignment.centerLeft,
-              child: pw.Text(
-                'EQUIPO',
-                style: pw.TextStyle(
-                  fontSize: 8,
-                  fontWeight: pw.FontWeight.bold,
-                ),
+            // Single device (legacy)
+            if (order.equipments.isEmpty && order.device != null) ...[
+              pw.Align(
+                alignment: pw.Alignment.centerLeft,
+                child: pw.Text('EQUIPO',
+                    style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
               ),
-            ),
-            _pdfRow('Tipo', order.device?.type ?? '-'),
-            _pdfRow('Marca', order.device?.brand ?? '-'),
-            _pdfRow('Modelo', order.device?.model ?? '-'),
-            if (order.device?.serial != null)
-              _pdfRow('Serial', order.device!.serial!),
-            if (order.device?.accessories != null &&
-                order.device!.accessories!.isNotEmpty) ...[
+              _pdfRow('Tipo', order.device?.type ?? '-'),
+              _pdfRow('Marca', order.device?.brand ?? '-'),
+              _pdfRow('Modelo', order.device?.model ?? '-'),
+              if (order.device?.serial != null)
+                _pdfRow('Serial', order.device!.serial!),
+              if (order.device?.accessories != null &&
+                  order.device!.accessories!.isNotEmpty) ...[
+                pw.Divider(),
+                pw.Align(
+                  alignment: pw.Alignment.centerLeft,
+                  child: pw.Text('ACCESORIOS',
+                      style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                ),
+                pw.Align(
+                  alignment: pw.Alignment.centerLeft,
+                  child: pw.Text(order.device!.accessories!.join(', '),
+                      style: const pw.TextStyle(fontSize: 7)),
+                ),
+              ],
               pw.Divider(),
               pw.Align(
                 alignment: pw.Alignment.centerLeft,
-                child: pw.Text(
-                  'ACCESORIOS',
-                  style: pw.TextStyle(
-                    fontSize: 8,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
+                child: pw.Text('PROBLEMA',
+                    style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
               ),
               pw.Align(
                 alignment: pw.Alignment.centerLeft,
-                child: pw.Text(
-                  order.device!.accessories!.join(', '),
-                  style: const pw.TextStyle(fontSize: 7),
-                ),
+                child: pw.Text(order.problemReported,
+                    style: const pw.TextStyle(fontSize: 7)),
               ),
             ],
-            pw.Divider(),
-            pw.Align(
-              alignment: pw.Alignment.centerLeft,
-              child: pw.Text(
-                'PROBLEMA',
-                style: pw.TextStyle(
-                  fontSize: 8,
-                  fontWeight: pw.FontWeight.bold,
-                ),
+            // Multiple equipments
+            if (order.equipments.isNotEmpty) ...[
+              pw.Align(
+                alignment: pw.Alignment.centerLeft,
+                child: pw.Text('EQUIPOS (${order.equipments.length})',
+                    style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
               ),
-            ),
-            pw.Align(
-              alignment: pw.Alignment.centerLeft,
-              child: pw.Text(
-                order.problemReported,
-                style: const pw.TextStyle(fontSize: 7),
-              ),
-            ),
+              ...order.equipments.asMap().entries.expand((e) {
+                final i = e.key;
+                final eq = e.value;
+                return [
+                  if (i > 0) pw.SizedBox(height: 4),
+                  pw.Align(
+                    alignment: pw.Alignment.centerLeft,
+                    child: pw.Text('${i + 1}. ${eq.deviceType} ${eq.deviceBrand} ${eq.deviceModel}',
+                        style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)),
+                  ),
+                  if (eq.deviceSerial != null)
+                    _pdfRow('  Serial', eq.deviceSerial!),
+                  if (eq.accessories != null && eq.accessories!.isNotEmpty)
+                    _pdfRow('  Accesorios', eq.accessories!.join(', ')),
+                  pw.Align(
+                    alignment: pw.Alignment.centerLeft,
+                    child: pw.Text('  Problema: ${eq.problemReported}',
+                        style: const pw.TextStyle(fontSize: 6)),
+                  ),
+                ];
+              }),
+            ],
             pw.SizedBox(height: 14),
             pw.Divider(color: PdfColors.grey400),
             pw.SizedBox(height: 4),
@@ -514,28 +527,50 @@ class TicketPrinterService {
     gen.printTwoColumns('Nombre:', _s(order.customer?.fullName ?? '-'));
     gen.printTwoColumns('Cedula:', order.customer?.idNumber ?? '-');
     gen.printTwoColumns('Tel:', order.customer?.phone ?? '-');
-    gen.printSeparator();
-    gen.setBold(true);
-    gen.printLine('DATOS DEL EQUIPO');
-    gen.setBold(false);
-    gen.printTwoColumns('Tipo:', _s(order.device?.type ?? '-'));
-    gen.printTwoColumns('Marca:', _s(order.device?.brand ?? '-'));
-    gen.printTwoColumns('Modelo:', _s(order.device?.model ?? '-'));
-    if (order.device?.serial != null)
-      gen.printTwoColumns('Serial:', order.device!.serial!);
-    if (order.device?.accessories != null &&
-        order.device!.accessories!.isNotEmpty) {
+    // Single device (legacy)
+    if (order.equipments.isEmpty && order.device != null) {
       gen.printSeparator();
       gen.setBold(true);
-      gen.printLine('ACCESORIOS');
+      gen.printLine('DATOS DEL EQUIPO');
       gen.setBold(false);
-      gen.printLine(_s(order.device!.accessories!.join(', ')));
+      gen.printTwoColumns('Tipo:', _s(order.device?.type ?? '-'));
+      gen.printTwoColumns('Marca:', _s(order.device?.brand ?? '-'));
+      gen.printTwoColumns('Modelo:', _s(order.device?.model ?? '-'));
+      if (order.device?.serial != null)
+        gen.printTwoColumns('Serial:', order.device!.serial!);
+      if (order.device?.accessories != null &&
+          order.device!.accessories!.isNotEmpty) {
+        gen.printSeparator();
+        gen.setBold(true);
+        gen.printLine('ACCESORIOS');
+        gen.setBold(false);
+        gen.printLine(_s(order.device!.accessories!.join(', ')));
+      }
+      gen.printSeparator();
+      gen.setBold(true);
+      gen.printLine('PROBLEMA');
+      gen.setBold(false);
+      for (final l in _w(_s(order.problemReported), 48)) gen.printLine(l);
     }
-    gen.printSeparator();
-    gen.setBold(true);
-    gen.printLine('PROBLEMA');
-    gen.setBold(false);
-    for (final l in _w(_s(order.problemReported), 48)) gen.printLine(l);
+    // Multiple equipments
+    if (order.equipments.isNotEmpty) {
+      gen.printSeparator();
+      gen.setBold(true);
+      gen.printLine('EQUIPOS (${order.equipments.length})');
+      gen.setBold(false);
+      for (int i = 0; i < order.equipments.length; i++) {
+        final eq = order.equipments[i];
+        if (i > 0) gen.feed(1);
+        gen.setBold(true);
+        gen.printLine('${i + 1}. ${_s(eq.deviceType)} ${_s(eq.deviceBrand)} ${_s(eq.deviceModel)}');
+        gen.setBold(false);
+        if (eq.deviceSerial != null)
+          gen.printTwoColumns('  Serial:', eq.deviceSerial!);
+        if (eq.accessories != null && eq.accessories!.isNotEmpty)
+          gen.printLine('  Acc: ${_s(eq.accessories!.join(', '))}');
+        for (final l in _w('  ${_s(eq.problemReported)}', 46)) gen.printLine(l);
+      }
+    }
     gen.feed(2);
     gen.printSeparator(char: '.', length: 48);
     gen.setAlign(1);

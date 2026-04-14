@@ -35,42 +35,28 @@ class OrderService {
     required List<EquipmentData> equipments,
     List<File>? photos,
   }) async {
+    // Send first device as flat fields (always works with any backend version)
+    final eq = equipments[0];
     final data = <String, dynamic>{
       'customerId': customerId,
+      'deviceType': eq.deviceType,
+      'deviceBrand': eq.deviceBrand,
+      'deviceModel': eq.deviceModel,
+      'problemReported': eq.problemReported,
     };
-
-    if (equipments.length == 1) {
-      // Single device - send flat fields for backward compatibility
-      final eq = equipments[0];
-      data['deviceType'] = eq.deviceType;
-      data['deviceBrand'] = eq.deviceBrand;
-      data['deviceModel'] = eq.deviceModel;
-      data['problemReported'] = eq.problemReported;
-      data['deviceSerial'] = eq.deviceSerial;
-      data['deviceColor'] = eq.deviceColor;
-      data['accessories'] = eq.accessories;
-      data['technicianId'] = eq.technicianId;
-    } else {
-      // Multiple devices - send equipments array
-      data['equipments'] = equipments.map((eq) => {
-        'deviceType': eq.deviceType,
-        'deviceBrand': eq.deviceBrand,
-        'deviceModel': eq.deviceModel,
-        'problemReported': eq.problemReported,
-        'deviceSerial': eq.deviceSerial,
-        'deviceColor': eq.deviceColor,
-        'accessories': eq.accessories,
-        'technicianId': eq.technicianId,
-      }).toList();
-    }
+    if (eq.deviceSerial != null) data['deviceSerial'] = eq.deviceSerial;
+    if (eq.deviceColor != null) data['deviceColor'] = eq.deviceColor;
+    if (eq.accessories != null) data['accessories'] = eq.accessories;
+    if (eq.technicianId != null) data['technicianId'] = eq.technicianId;
 
     // Create order
     final response = await _api.dio.post('/orders', data: data);
     final order = ServiceOrder.fromJson(response.data);
 
-    // Upload photos separately for single device
-    if (equipments.length == 1 && photos != null && photos.isNotEmpty) {
-      for (final photo in photos) {
+    // Upload photos for first device
+    final firstPhotos = photos ?? (eq.photos != null && eq.photos!.isNotEmpty ? eq.photos! : null);
+    if (firstPhotos != null) {
+      for (final photo in firstPhotos) {
         try {
           final bytes = await photo.readAsBytes();
           final b64 = 'data:image/jpeg;base64,${base64Encode(bytes)}';
@@ -82,17 +68,18 @@ class OrderService {
       }
     }
 
-    // Upload photos for each equipment in multi-device
+    // If multi-device, upload remaining device photos too
     if (equipments.length > 1) {
-      for (final eq in equipments) {
-        if (eq.photos != null && eq.photos!.isNotEmpty) {
-          for (final photo in eq.photos!) {
+      for (int i = 1; i < equipments.length; i++) {
+        final extra = equipments[i];
+        if (extra.photos != null && extra.photos!.isNotEmpty) {
+          for (final photo in extra.photos!) {
             try {
               final bytes = await photo.readAsBytes();
               final b64 = 'data:image/jpeg;base64,${base64Encode(bytes)}';
               await _api.dio.post('/orders/${order.id}/photos', data: {
                 'photoUrl': b64,
-                'description': '${eq.deviceType} ${eq.deviceBrand} ${eq.deviceModel}',
+                'description': '${extra.deviceType} ${extra.deviceBrand} ${extra.deviceModel}',
                 'stage': 'reception',
               });
             } catch (_) {}
