@@ -53,13 +53,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   List<Map<String, dynamic>> _photos = [];
 
   void _onMenuAction(String action) {
-    switch (action) {
-      case 'print_ticket':
-        _reprintTicket();
-        break;
-      case 'print_acta':
-        _reprintActa();
-        break;
+    if (action == 'print_ticket') {
+      _reprintTicket();
+    } else if (action == 'print_acta_all') {
+      _reprintActa(null); // All delivered
+    } else if (action.startsWith('print_acta_eq_')) {
+      final eqId = action.replaceFirst('print_acta_eq_', '');
+      _reprintActa(eqId);
     }
   }
 
@@ -85,7 +85,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
-  Future<void> _reprintActa() async {
+  Future<void> _reprintActa(String? equipmentId) async {
     if (_tenant == null) return;
 
     if (mounted) {
@@ -161,7 +161,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         }
       } catch (_) {}
 
-      // Create order copy with full diagnosis
+      // Filter equipments for the acta
+      List<OrderEquipment> actaEquipments;
+      if (equipmentId != null) {
+        actaEquipments = _order.equipments.where((eq) => eq.id == equipmentId).toList();
+      } else {
+        actaEquipments = _order.equipments.where((eq) => eq.status == 'delivered').toList();
+      }
+
       final orderForPdf = ServiceOrder(
         id: _order.id,
         orderNumber: _order.orderNumber,
@@ -182,6 +189,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         createdAt: _order.createdAt,
         deliveredAt: _order.deliveredAt,
         items: _order.items,
+        equipments: actaEquipments,
       );
 
       final pdfBytes = await _pdfGenerator.generateDeliveryAct(
@@ -252,6 +260,21 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   Future<void> _changeEquipmentStatus(String equipmentId, String newStatus) async {
+    // Check technician assignment before diagnosing
+    if (newStatus == 'diagnosing') {
+      final eq = _order.equipments.where((e) => e.id == equipmentId).firstOrNull;
+      final hasTech = eq?.technicianId != null || _order.technicianId != null;
+      if (!hasTech) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Asigne un tecnico al equipo antes de iniciar diagnostico'),
+            backgroundColor: AppTheme.accentOrange,
+          ));
+        }
+        return;
+      }
+    }
+
     final notesCtrl = TextEditingController();
     final notesRequired = newStatus == 'diagnosing' || newStatus == 'repairing';
 
@@ -659,16 +682,45 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   ]),
                 ));
               }
-              // Reimprimir acta (solo si está entregada o cerrada)
-              if (_order.status == 'delivered') {
+              // Reimprimir actas
+              final deliveredEqs = _order.equipments.where((eq) => eq.status == 'delivered').toList();
+              if (_order.status == 'delivered' && _order.equipments.isEmpty) {
+                // Single device - one acta
                 items.add(PopupMenuItem(
-                  value: 'print_acta',
+                  value: 'print_acta_all',
                   child: Row(children: [
                     Icon(Icons.picture_as_pdf_rounded, size: 18, color: AppTheme.accentRed),
                     const SizedBox(width: 10),
-                    Text('Reimprimir acta de entrega', style: TextStyle(color: AppTheme.textPrimary)),
+                    Text('Reimprimir acta', style: TextStyle(color: AppTheme.textPrimary)),
                   ]),
                 ));
+              } else if (deliveredEqs.isNotEmpty) {
+                // Multi-equipment: option per delivered equipment + general if all delivered
+                if (deliveredEqs.length > 1) {
+                  items.add(PopupMenuItem(
+                    value: 'print_acta_all',
+                    child: Row(children: [
+                      Icon(Icons.picture_as_pdf_rounded, size: 18, color: AppTheme.accentRed),
+                      const SizedBox(width: 10),
+                      Text('Reimprimir acta general', style: TextStyle(color: AppTheme.textPrimary)),
+                    ]),
+                  ));
+                }
+                for (int i = 0; i < _order.equipments.length; i++) {
+                  final eq = _order.equipments[i];
+                  if (eq.status == 'delivered') {
+                    items.add(PopupMenuItem(
+                      value: 'print_acta_eq_${eq.id}',
+                      child: Row(children: [
+                        Icon(Icons.description_rounded, size: 18, color: AppTheme.accentPurple),
+                        const SizedBox(width: 10),
+                        Expanded(child: Text('Acta equipo ${i + 1}: ${eq.deviceBrand} ${eq.deviceModel}',
+                            style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                            overflow: TextOverflow.ellipsis)),
+                      ]),
+                    ));
+                  }
+                }
               }
               return items;
             },
@@ -1305,7 +1357,21 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   _infoRow('Problema', eq.problemReported),
                   if (eq.diagnosis != null) _infoRow('Diagnostico', eq.diagnosis!),
                   if (eq.warrantyDays > 0) _infoRow('Garantia', '${eq.warrantyDays} dias'),
-                  // Action buttons (no "Firmar y Entregar" here - that's global)
+                  // Technician assignment for this equipment
+                  if (eq.status == 'received' && eq.technicianId == null && _order.technicianId == null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: InkWell(
+                        onTap: () => _showAssignTechnicianDialog(),
+                        child: Row(children: [
+                          Icon(Icons.warning_rounded, color: AppTheme.accentOrange, size: 14),
+                          const SizedBox(width: 4),
+                          Text('Sin tecnico - toque para asignar',
+                              style: TextStyle(color: AppTheme.accentOrange, fontSize: 11, fontWeight: FontWeight.w600)),
+                        ]),
+                      ),
+                    ),
+                  // Action buttons
                   if (eq.status != 'delivered' && eq.status != 'returned' && eq.status != 'ready') ...[
                     if (showNextButton) ...[
                       const SizedBox(height: 10),

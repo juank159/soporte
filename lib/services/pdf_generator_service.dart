@@ -127,7 +127,7 @@ class PdfGeneratorService {
           ...equipmentWidgets,
 
           // ========== COST SUMMARY ==========
-          pw.SizedBox(height: 16),
+          pw.SizedBox(height: 10),
           pw.Container(
             padding: const pw.EdgeInsets.all(10),
             decoration: pw.BoxDecoration(
@@ -172,25 +172,32 @@ class PdfGeneratorService {
           pw.SizedBox(height: 16),
 
           // ========== WARRANTY ==========
-          pw.RichText(
-            textAlign: pw.TextAlign.justify,
-            text: pw.TextSpan(
-              style: const pw.TextStyle(fontSize: 11, lineSpacing: 5),
-              children: [
-                const pw.TextSpan(text: 'GARANTIA: '),
-                if (hasWarranty) ...[
-                  const pw.TextSpan(text: 'Se otorga garantia de '),
-                  pw.TextSpan(text: '$warrantyMonths mes(es)',
-                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  const pw.TextSpan(
-                      text: ' sobre el trabajo realizado. La garantia cubre exclusivamente la reparacion efectuada y no aplica por mal uso, golpes, humedad u otras causas ajenas al servicio prestado.'),
-                ] else ...[
-                  const pw.TextSpan(text: 'Este servicio '),
-                  pw.TextSpan(text: 'NO incluye garantia',
-                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  const pw.TextSpan(text: '. El cliente ha sido informado y acepta esta condicion.'),
+          pw.Container(
+            padding: const pw.EdgeInsets.all(8),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(width: 0.5, color: PdfColors.grey400),
+              borderRadius: pw.BorderRadius.circular(4),
+            ),
+            child: pw.RichText(
+              textAlign: pw.TextAlign.justify,
+              text: pw.TextSpan(
+                style: const pw.TextStyle(fontSize: 10, lineSpacing: 4),
+                children: [
+                  pw.TextSpan(text: 'GARANTIA: ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                  if (hasWarranty) ...[
+                    const pw.TextSpan(text: 'Se otorga garantia de '),
+                    pw.TextSpan(text: '$warrantyMonths mes(es)',
+                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                    const pw.TextSpan(
+                        text: ' sobre el trabajo realizado. La garantia cubre exclusivamente la reparacion efectuada y no aplica por mal uso, golpes, humedad u otras causas ajenas al servicio prestado.'),
+                  ] else ...[
+                    const pw.TextSpan(text: 'Este servicio '),
+                    pw.TextSpan(text: 'NO incluye garantia',
+                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                    const pw.TextSpan(text: '. El cliente ha sido informado y acepta esta condicion.'),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
           pw.SizedBox(height: 12),
