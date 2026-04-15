@@ -45,12 +45,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     _loadTenant();
     _loadHistory();
     _loadPhotos();
+    _loadTechNames();
   }
 
   final TicketPrinterService _printerService = TicketPrinterService();
   final PdfGeneratorService _pdfGenerator = PdfGeneratorService();
   List<Map<String, dynamic>> _history = [];
   List<Map<String, dynamic>> _photos = [];
+  Map<String, String> _techNames = {}; // techId -> name
 
   void _onMenuAction(String action) {
     if (action == 'print_ticket') {
@@ -259,6 +261,21 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     return null;
   }
 
+  Future<void> _loadTechNames() async {
+    try {
+      final res = await _api.dio.get('/users');
+      final users = res.data as List;
+      setState(() {
+        _techNames = {for (final u in users) u['id'] as String: u['fullName'] as String};
+      });
+    } catch (_) {}
+  }
+
+  String _getTechName(String? techId) {
+    if (techId == null) return '';
+    return _techNames[techId] ?? '';
+  }
+
   Future<void> _assignTechnicianToEquipment(String equipmentId) async {
     List<User> techs = [];
     try {
@@ -356,6 +373,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         hintText = '';
     }
 
+    void confirmAction(BuildContext ctx) {
+      if (notesRequired && notesCtrl.text.trim().isEmpty) {
+        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+          content: Text('Este campo es obligatorio'),
+          backgroundColor: AppTheme.accentOrange,
+        ));
+        return;
+      }
+      Navigator.pop(ctx, true);
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -364,6 +392,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           TextField(
             controller: notesCtrl,
+            autofocus: true,
             style: TextStyle(color: AppTheme.textPrimary),
             decoration: InputDecoration(
               labelText: labelText,
@@ -371,21 +400,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               alignLabelWithHint: true,
             ),
             maxLines: 4,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => confirmAction(ctx),
           ),
         ]),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
           ElevatedButton(
-            onPressed: () {
-              if (notesRequired && notesCtrl.text.trim().isEmpty) {
-                ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-                  content: Text('Este campo es obligatorio'),
-                  backgroundColor: AppTheme.accentOrange,
-                ));
-                return;
-              }
-              Navigator.pop(ctx, true);
-            },
+            onPressed: () => confirmAction(ctx),
             child: const Text('Confirmar'),
           ),
         ],
@@ -1412,6 +1434,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   if (eq.deviceColor != null) _infoRow('Color', eq.deviceColor!),
                   if (eq.accessories != null && eq.accessories!.isNotEmpty)
                     _infoRow('Accesorios', eq.accessories!.join(', ')),
+                  if (eq.technicianId != null && _getTechName(eq.technicianId).isNotEmpty)
+                    _infoRow('Tecnico', _getTechName(eq.technicianId)),
                   _infoRow('Problema', eq.problemReported),
                   if (eq.diagnosis != null) _infoRow('Diagnostico', eq.diagnosis!),
                   if (eq.warrantyDays > 0) _infoRow('Garantia', '${eq.warrantyDays} dias'),
