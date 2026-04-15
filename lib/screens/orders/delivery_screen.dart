@@ -444,6 +444,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                 const SizedBox(height: 16),
                 SignaturePadWidget(
                   label: 'Firma de quien recibe',
+                  fullScreen: true,
                   onSigned: (data) =>
                       setState(() => _clientSignature = data),
                 ),
