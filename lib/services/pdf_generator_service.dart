@@ -169,7 +169,7 @@ class PdfGeneratorService {
               ),
             ]),
           ),
-          pw.SizedBox(height: 16),
+          pw.SizedBox(height: 8),
 
           // ========== WARRANTY ==========
           pw.Container(
@@ -178,37 +178,58 @@ class PdfGeneratorService {
               border: pw.Border.all(width: 0.5, color: PdfColors.grey400),
               borderRadius: pw.BorderRadius.circular(4),
             ),
-            child: pw.RichText(
-              textAlign: pw.TextAlign.justify,
-              text: pw.TextSpan(
-                style: const pw.TextStyle(fontSize: 10, lineSpacing: 4),
-                children: [
-                  pw.TextSpan(text: 'GARANTIA: ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  if (hasWarranty && warrantyMonths > 0) ...[
-                    const pw.TextSpan(text: 'Se otorga garantia de '),
-                    pw.TextSpan(text: '$warrantyMonths mes(es)',
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                    const pw.TextSpan(
-                        text: ' sobre el trabajo realizado. La garantia cubre exclusivamente la reparacion efectuada y no aplica por mal uso, golpes, humedad u otras causas ajenas al servicio prestado.'),
-                  ] else ...[
-                    const pw.TextSpan(text: 'La garantia de este servicio es '),
-                    pw.TextSpan(text: 'instantanea',
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                    const pw.TextSpan(text: '. Se entrega el equipo probado y funcionando. No se otorga garantia adicional sobre el trabajo realizado. El cliente ha sido informado y acepta esta condicion.'),
-                  ],
-                ],
-              ),
-            ),
+            child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+              pw.Text('GARANTIA', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 4),
+              // Per-equipment warranty if multi
+              if (isMulti) ...[
+                ...equipmentWidgets.isEmpty ? [] : order.equipments.map((eq) {
+                  final eqWarranty = eq.warrantyDays;
+                  final eqMonths = (eqWarranty / 30).round();
+                  return pw.Padding(
+                    padding: const pw.EdgeInsets.only(bottom: 2),
+                    child: pw.Text(
+                      '${eq.deviceType} ${eq.deviceBrand} ${eq.deviceModel}: ${eqWarranty > 0 ? '$eqMonths mes(es)' : 'Instantanea (sin garantia)'}',
+                      style: const pw.TextStyle(fontSize: 9),
+                    ),
+                  );
+                }),
+                pw.SizedBox(height: 4),
+                pw.Text(
+                  'La garantia cubre exclusivamente la reparacion efectuada y no aplica por mal uso, golpes, humedad u otras causas ajenas al servicio.',
+                  style: const pw.TextStyle(fontSize: 8),
+                ),
+              ] else ...[
+                pw.RichText(
+                  textAlign: pw.TextAlign.justify,
+                  text: pw.TextSpan(
+                    style: const pw.TextStyle(fontSize: 9, lineSpacing: 3),
+                    children: [
+                      if (hasWarranty && warrantyMonths > 0) ...[
+                        const pw.TextSpan(text: 'Se otorga garantia de '),
+                        pw.TextSpan(text: '$warrantyMonths mes(es)',
+                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                        const pw.TextSpan(text: '. Cubre exclusivamente la reparacion efectuada. No aplica por mal uso, golpes o humedad.'),
+                      ] else ...[
+                        const pw.TextSpan(text: 'Garantia '),
+                        pw.TextSpan(text: 'instantanea', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                        const pw.TextSpan(text: '. Se entrega probado y funcionando. Sin garantia adicional.'),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ]),
           ),
-          pw.SizedBox(height: 8),
+          pw.SizedBox(height: 6),
 
           // ========== TERMS ==========
           pw.Text(
-            'El cliente declara recibir el(los) equipo(s) en funcionamiento, probado(s) y a satisfaccion. Se le han explicado los cuidados que debe tener. Despues de haber leido todo lo aqui mencionado acepta los terminos y condiciones y recibe conforme.',
-            style: const pw.TextStyle(fontSize: 10, lineSpacing: 5),
+            'Declaro recibir el(los) equipo(s) probado(s) y a satisfaccion. Acepto los terminos y condiciones.',
+            style: const pw.TextStyle(fontSize: 9, lineSpacing: 3),
             textAlign: pw.TextAlign.justify,
           ),
-          pw.SizedBox(height: 20),
+          pw.SizedBox(height: 16),
 
           // ========== SIGNATURES ==========
           pw.Row(
@@ -218,13 +239,13 @@ class PdfGeneratorService {
               _signatureBlock(clientSigWidget, 'RECIBE CONFORME', clientName),
             ],
           ),
-          pw.SizedBox(height: 20),
+          pw.SizedBox(height: 10),
 
           // ========== FOOTER ==========
           pw.Center(
             child: pw.Text(
               '${tenant.name} - ${tenant.address ?? ''} - Tel: ${tenant.phone ?? ''}',
-              style: const pw.TextStyle(fontSize: 8),
+              style: const pw.TextStyle(fontSize: 7),
               textAlign: pw.TextAlign.center,
             ),
           ),

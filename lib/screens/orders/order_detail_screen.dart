@@ -1335,6 +1335,48 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
+  Widget _warrantyProgress(int warrantyDays, DateTime deliveredAt) {
+    final now = DateTime.now();
+    final endDate = deliveredAt.add(Duration(days: warrantyDays));
+    final totalDays = warrantyDays;
+    final elapsed = now.difference(deliveredAt).inDays;
+    final remaining = totalDays - elapsed;
+    final progress = (elapsed / totalDays).clamp(0.0, 1.0);
+    final expired = remaining <= 0;
+    final color = expired ? AppTheme.accentRed : remaining <= 7 ? AppTheme.accentOrange : AppTheme.accentGreen;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(expired ? Icons.gpp_bad_rounded : Icons.verified_user_rounded, color: color, size: 14),
+          const SizedBox(width: 4),
+          Text(
+            expired
+                ? 'Garantia vencida'
+                : 'Garantia: $remaining dia(s) restante(s)',
+            style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
+          ),
+        ]),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 6,
+            backgroundColor: color.withValues(alpha: 0.15),
+            valueColor: AlwaysStoppedAnimation(color),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          'Vence: ${AppDateUtils.formatDate(endDate)}',
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 9),
+        ),
+      ]),
+    );
+  }
+
   // Mini timeline for individual equipment
   Widget _equipmentTimeline(String status) {
     final stages = [
@@ -1437,7 +1479,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     _infoRow('Tecnico', _getTechName(eq.technicianId)),
                   _infoRow('Problema', eq.problemReported),
                   if (eq.diagnosis != null) _infoRow('Diagnostico', eq.diagnosis!),
-                  if (eq.warrantyDays > 0) _infoRow('Garantia', '${eq.warrantyDays} dias'),
+                  if (eq.laborCost > 0) _infoRow('Valor', '\$${formatMoney(eq.laborCost)}'),
+                  // Warranty with progress bar
+                  if (eq.status == 'delivered' && eq.warrantyDays > 0 && eq.deliveredAt != null)
+                    _warrantyProgress(eq.warrantyDays, eq.deliveredAt!)
+                  else if (eq.status == 'delivered' && eq.warrantyDays == 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text('Garantia instantanea',
+                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 11, fontStyle: FontStyle.italic)),
+                    ),
                   // Technician assignment for this equipment
                   if (eq.status == 'received' && eq.technicianId == null)
                     Padding(

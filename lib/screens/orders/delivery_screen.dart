@@ -147,22 +147,28 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
       try {
         await _api.dio.patch('/orders/${widget.order.id}/delivery-info', data: {
           'total': newTotal,
-          'warrantyDays': warrantyDays > widget.order.warrantyDays ? warrantyDays : widget.order.warrantyDays,
+          'warrantyDays': widget.order.equipments.isEmpty ? warrantyDays : widget.order.warrantyDays,
         });
       } catch (_) {}
 
-      // Change ONLY ready equipment to delivered (backend syncOrderStatus handles order status)
-      final deliveryNote = 'Entregado por \$${_totalCtrl.text.trim()} - Garantia: ${_hasWarranty == true ? '$warrantyMonths meses' : 'Sin garantia'}';
+      // Change ONLY ready equipment to delivered with individual warranty + cost
+      final readyEquipments = widget.order.equipments.where((eq) => eq.status == 'ready').toList();
+      final deliveryNote = 'Entregado por \$${_totalCtrl.text.trim()} - Garantia: ${_hasWarranty == true ? '$warrantyMonths meses' : 'Instantanea'}';
+
       if (widget.order.equipments.isNotEmpty) {
-        for (final eq in widget.order.equipments) {
-          if (eq.status == 'ready') {
-            try {
-              await _api.dio.patch('/orders/${widget.order.id}/equipments/${eq.id}/status', data: {
-                'status': 'delivered',
-                'notes': deliveryNote,
-              });
-            } catch (_) {}
-          }
+        // Divide cost equally if multiple equipment, or full cost if one
+        final costPerEquipment = readyEquipments.isNotEmpty
+            ? totalValue / readyEquipments.length : totalValue;
+
+        for (final eq in readyEquipments) {
+          try {
+            await _api.dio.patch('/orders/${widget.order.id}/equipments/${eq.id}/status', data: {
+              'status': 'delivered',
+              'notes': deliveryNote,
+              'warrantyDays': warrantyDays,
+              'laborCost': costPerEquipment,
+            });
+          } catch (_) {}
         }
       } else {
         // Single device order - change order status directly
