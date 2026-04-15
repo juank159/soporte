@@ -258,10 +258,19 @@ class PdfGeneratorService {
 
   // ===== Equipment block for multi-device =====
   List<pw.Widget> _buildEquipmentBlock(int number, OrderEquipment eq) {
+    // Filter out delivery notes from the notes field (they duplicate value/warranty info)
+    String? repairNotes;
+    if (eq.notes != null && eq.notes!.isNotEmpty) {
+      final note = eq.notes!;
+      if (!note.startsWith('Entregado por')) {
+        repairNotes = note;
+      }
+    }
+
     return [
       pw.Container(
         padding: const pw.EdgeInsets.all(10),
-        margin: const pw.EdgeInsets.only(bottom: 12),
+        margin: const pw.EdgeInsets.only(bottom: 8),
         decoration: pw.BoxDecoration(
           border: pw.Border.all(width: 0.5, color: PdfColors.grey400),
           borderRadius: pw.BorderRadius.circular(4),
@@ -287,17 +296,17 @@ class PdfGeneratorService {
                   _tableRow('Accesorios', eq.accessories!.join(', ')),
               ],
             ),
-            pw.SizedBox(height: 8),
+            pw.SizedBox(height: 6),
             pw.Text('Falla reportada:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
             pw.Text(eq.problemReported, style: const pw.TextStyle(fontSize: 10)),
             if (eq.diagnosis != null && eq.diagnosis!.isNotEmpty) ...[
-              pw.SizedBox(height: 6),
-              pw.Text('Diagnostico y trabajo realizado:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 4),
+              pw.Text('Reparacion realizada:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
               pw.Text(eq.diagnosis!, style: const pw.TextStyle(fontSize: 10)),
             ],
-            if (eq.notes != null && eq.notes!.isNotEmpty) ...[
+            if (repairNotes != null) ...[
               pw.SizedBox(height: 4),
-              pw.Text('Observaciones: ${eq.notes!}', style: const pw.TextStyle(fontSize: 9)),
+              pw.Text('Detalle: $repairNotes', style: const pw.TextStyle(fontSize: 9)),
             ],
           ],
         ),
@@ -336,12 +345,12 @@ class PdfGeneratorService {
                   _tableRow('Accesorios', device.accessories!.join(', ')),
               ],
             ),
-            pw.SizedBox(height: 8),
+            pw.SizedBox(height: 6),
             pw.Text('Falla reportada:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
             pw.Text(order.problemReported, style: const pw.TextStyle(fontSize: 10)),
             if (order.diagnosis != null && order.diagnosis!.isNotEmpty) ...[
-              pw.SizedBox(height: 6),
-              pw.Text('Diagnostico y trabajo realizado:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 4),
+              pw.Text('Reparacion realizada:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
               pw.Text(order.diagnosis!, style: const pw.TextStyle(fontSize: 10)),
             ],
           ],

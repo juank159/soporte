@@ -212,9 +212,20 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         }
       } catch (_) {}
 
-      // Build order copy - only include equipments being delivered (ready)
-      final deliveringEquipments = widget.order.equipments
-          .where((eq) => eq.status == 'ready')
+      // Track IDs of equipment we just delivered
+      final deliveredIds = readyEquipments.map((eq) => eq.id).toSet();
+
+      // Reload order to get updated equipment data (with warranty/cost saved)
+      ServiceOrder? updatedOrder;
+      try {
+        final orderRes = await _api.dio.get('/orders/${widget.order.id}');
+        updatedOrder = ServiceOrder.fromJson(orderRes.data);
+      } catch (_) {}
+
+      // Only include the equipment we JUST delivered in this session
+      final sourceOrder = updatedOrder ?? widget.order;
+      final deliveringEquipments = sourceOrder.equipments
+          .where((eq) => deliveredIds.contains(eq.id))
           .toList();
 
       final orderForPdf = ServiceOrder(
