@@ -1273,11 +1273,22 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             if (_order.device?.accessories != null &&
                 _order.device!.accessories!.isNotEmpty)
               _infoRow('Accesorios', _order.device!.accessories!.join(', ')),
+            if (_order.technicianId != null && _getTechName(_order.technicianId).isNotEmpty)
+              _infoRow('Tecnico', _getTechName(_order.technicianId)),
           ]),
         _sectionCard('Fechas', Icons.schedule_rounded, AppTheme.textSecondary, [
           _infoRow('Creada', AppDateUtils.format(_order.createdAt)),
           if (_order.deliveredAt != null)
             _infoRow('Entregada', AppDateUtils.format(_order.deliveredAt!)),
+          // Warranty progress for single-device
+          if (_order.warrantyDays > 0 && _order.deliveredAt != null)
+            _warrantyProgress(_order.warrantyDays, _order.deliveredAt!)
+          else if (_order.status == 'delivered' && _order.warrantyDays == 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('Garantia instantanea',
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 11, fontStyle: FontStyle.italic)),
+            ),
         ]),
 
         // Photos
