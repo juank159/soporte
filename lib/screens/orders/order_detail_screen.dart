@@ -1277,8 +1277,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           _infoRow('Creada', AppDateUtils.format(_order.createdAt)),
           if (_order.deliveredAt != null)
             _infoRow('Entregada', AppDateUtils.format(_order.deliveredAt!)),
-          if (_order.warrantyDays > 0)
-            _infoRow('Garantia', '${_order.warrantyDays} dias'),
         ]),
 
         // Photos
@@ -1617,41 +1615,51 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         if (_order.items.isNotEmpty || _order.total > 0)
           _sectionCard(
               'Costos', Icons.receipt_long_rounded, AppTheme.accentGreen, [
+            // Per-equipment delivery values (from history notes)
+            if (_order.equipments.isNotEmpty) ...[
+              ..._order.equipments.where((eq) => eq.status == 'delivered' && eq.notes != null).map((eq) {
+                final match = RegExp(r'Entregado por \$([0-9.,]+)').firstMatch(eq.notes!);
+                final valueStr = match?.group(1) ?? '';
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(children: [
+                    Expanded(child: Text('${eq.deviceBrand} ${eq.deviceModel}',
+                        style: TextStyle(color: AppTheme.textPrimary, fontSize: 12))),
+                    Text(valueStr.isNotEmpty ? '\$$valueStr' : '-',
+                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                  ]),
+                );
+              }),
+              if (_order.equipments.any((eq) => eq.status == 'delivered'))
+                Divider(color: AppTheme.dividerColor),
+            ],
+            // Items detail
             ..._order.items.map((item) => Padding(
                   padding: EdgeInsets.only(bottom: 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                          child: Text('${item.qty}x ${item.description}',
-                              style: TextStyle(
-                                  color: AppTheme.textPrimary, fontSize: 12))),
-                      Text('\$${formatMoney(item.total)}',
-                          style: TextStyle(
-                              color: AppTheme.textSecondary, fontSize: 12)),
-                    ],
-                  ),
+                  child: Row(children: [
+                    Expanded(child: Text('${item.qty}x ${item.description}',
+                        style: TextStyle(color: AppTheme.textPrimary, fontSize: 12))),
+                    Text('\$${formatMoney(item.total)}',
+                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                  ]),
                 )),
             if (_order.laborCost > 0)
-              _infoRow('Mano de obra',
-                  '\$${formatMoney(_order.laborCost)}'),
-            Divider(color: AppTheme.dividerColor),
-            _infoRow('Subtotal', '\$${formatMoney(_order.subtotal)}'),
-            _infoRow('IVA 19%', '\$${formatMoney(_order.tax)}'),
+              _infoRow('Mano de obra', '\$${formatMoney(_order.laborCost)}'),
+            if (_order.items.isNotEmpty) Divider(color: AppTheme.dividerColor),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('TOTAL',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.accentGreen,
-                        fontSize: 16)),
+                    style: TextStyle(fontWeight: FontWeight.w800, color: AppTheme.accentGreen, fontSize: 16)),
                 Text('\$${formatMoney(_order.total)}',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.accentGreen,
-                        fontSize: 16)),
+                    style: const TextStyle(fontWeight: FontWeight.w800, color: AppTheme.accentGreen, fontSize: 16)),
               ],
             ),
+            if (_order.warrantyDays > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: _infoRow('Garantia', '${(_order.warrantyDays / 30).round()} mes(es)'),
+              ),
           ]),
       ],
     );

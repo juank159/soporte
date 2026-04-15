@@ -126,7 +126,7 @@ class ServiceOrder {
     this.subtotal = 0,
     this.tax = 0,
     this.total = 0,
-    this.warrantyDays = 30,
+    this.warrantyDays = 0,
     this.pdfUrl,
     required this.createdAt,
     this.deliveredAt,
@@ -156,7 +156,7 @@ class ServiceOrder {
       subtotal: double.tryParse('${json['subtotal']}') ?? 0,
       tax: double.tryParse('${json['tax']}') ?? 0,
       total: double.tryParse('${json['total']}') ?? 0,
-      warrantyDays: json['warrantyDays'] ?? 30,
+      warrantyDays: json['warrantyDays'] ?? 0,
       pdfUrl: json['pdfUrl'],
       createdAt: DateTime.parse(json['createdAt']),
       deliveredAt: json['deliveredAt'] != null
