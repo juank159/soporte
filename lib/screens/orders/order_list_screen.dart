@@ -70,6 +70,18 @@ class _OrderListScreenState extends State<OrderListScreen> {
   String _fmt(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
+  String _statusEmoji(String status) {
+    switch (status) {
+      case 'received': return '📥';
+      case 'diagnosing': return '🔍';
+      case 'repairing': return '🔧';
+      case 'ready': return '✅';
+      case 'delivered': return '🚀';
+      case 'returned': return '↩️';
+      default: return '⏳';
+    }
+  }
+
   Future<void> _printOrders(List<ServiceOrder> orders) async {
     if (orders.isEmpty) return;
 
@@ -486,15 +498,30 @@ class _OrderListScreenState extends State<OrderListScreen> {
                                             color: AppTheme.textPrimary,
                                             fontSize: 14)),
                                     SizedBox(height: 2),
-                                    Text(
-                                        order.equipments.isNotEmpty
-                                            ? '${order.equipments.length} equipo(s): ${order.equipments.map((e) => '${e.deviceBrand} ${e.deviceModel}').join(', ')}'
-                                            : '${order.device?.brand ?? ''} ${order.device?.model ?? ''}',
-                                        style: TextStyle(
-                                            color: AppTheme.textSecondary,
-                                            fontSize: 13),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis),
+                                    // Device info
+                                    if (order.equipments.isEmpty)
+                                      Text(
+                                          '${order.device?.brand ?? ''} ${order.device?.model ?? ''}',
+                                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                                          overflow: TextOverflow.ellipsis)
+                                    else
+                                      // Multi-equipment: show each with status icon
+                                      Wrap(
+                                        spacing: 4,
+                                        runSpacing: 2,
+                                        children: order.equipments.map((eq) {
+                                          return Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(_statusEmoji(eq.status), style: TextStyle(fontSize: 10)),
+                                              const SizedBox(width: 3),
+                                              Text('${eq.deviceBrand} ${eq.deviceModel}',
+                                                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                                              const SizedBox(width: 6),
+                                            ],
+                                          );
+                                        }).toList(),
+                                      ),
                                     Row(
                                       children: [
                                         Expanded(

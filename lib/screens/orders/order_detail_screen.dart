@@ -234,9 +234,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
-  /// Equipment that are ready to be delivered (not already delivered/returned)
-  List<OrderEquipment> get _allReadyEquipments =>
+  /// Equipment that are ready to be delivered
+  List<OrderEquipment> get _readyEquipments =>
       _order.equipments.where((eq) => eq.status == 'ready').toList();
+
+  /// True when ALL active (non-returned) equipments are ready
+  bool get _allActiveReady {
+    final active = _order.equipments.where((eq) => eq.status != 'returned' && eq.status != 'delivered').toList();
+    return active.isNotEmpty && active.every((eq) => eq.status == 'ready');
+  }
 
   String? _nextEquipmentStatus(String current) {
     const flow = ['received', 'diagnosing', 'repairing', 'ready', 'delivered'];
@@ -247,25 +253,60 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Future<void> _changeEquipmentStatus(String equipmentId, String newStatus) async {
     final notesCtrl = TextEditingController();
+    final notesRequired = newStatus == 'diagnosing' || newStatus == 'repairing';
+
+    String labelText;
+    String hintText;
+    switch (newStatus) {
+      case 'diagnosing':
+        labelText = 'Diagnostico del equipo *';
+        hintText = 'Ej: Se reviso el equipo, se encontro falla en...';
+        break;
+      case 'repairing':
+        labelText = 'Trabajo a realizar *';
+        hintText = 'Ej: Se procedera con cambio de pantalla...';
+        break;
+      case 'ready':
+        labelText = 'Observaciones (opcional)';
+        hintText = 'Ej: Reparacion completada...';
+        break;
+      default:
+        labelText = 'Notas (opcional)';
+        hintText = '';
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.surfaceColor,
-        title: Text('Cambiar estado', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
+        title: Text(_nextStatusLabel(newStatus), style: TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('Estado: ${_nextStatusLabel(newStatus)}',
-              style: TextStyle(color: AppTheme.accentCyan, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 12),
           TextField(
             controller: notesCtrl,
             style: TextStyle(color: AppTheme.textPrimary),
-            decoration: InputDecoration(labelText: 'Notas (opcional)', hintText: 'Que se hizo...'),
-            maxLines: 2,
+            decoration: InputDecoration(
+              labelText: labelText,
+              hintText: hintText,
+              alignLabelWithHint: true,
+            ),
+            maxLines: 4,
           ),
         ]),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirmar')),
+          ElevatedButton(
+            onPressed: () {
+              if (notesRequired && notesCtrl.text.trim().isEmpty) {
+                ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                  content: Text('Este campo es obligatorio'),
+                  backgroundColor: AppTheme.accentOrange,
+                ));
+                return;
+              }
+              Navigator.pop(ctx, true);
+            },
+            child: const Text('Confirmar'),
+          ),
         ],
       ),
     );
@@ -662,8 +703,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               // Equipments grid (full width, above columns)
               if (_order.equipments.isNotEmpty) ...[
                 _equipmentsGrid(),
-                // Delivery button when ALL non-returned equipments are ready
-                if (_allReadyEquipments.isNotEmpty && _tenant != null) ...[
+                // Global delivery button: only when ALL active equipments are ready
+                if (_allActiveReady && _tenant != null) ...[
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
@@ -681,7 +722,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         });
                       },
                       icon: const Icon(Icons.draw_rounded),
-                      label: Text('Firmar y Entregar (${_allReadyEquipments.length} equipo${_allReadyEquipments.length > 1 ? 's' : ''})'),
+                      label: Text('Firmar y Entregar todos (${_readyEquipments.length} equipos)'),
                     ),
                   ),
                 ],
@@ -1316,17 +1357,50 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       ),
                     ],
                   ],
-                  // Ready state: waiting for global delivery
-                  if (eq.status == 'ready')
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Row(children: [
-                        Icon(Icons.check_circle_rounded, color: AppTheme.accentGreen, size: 16),
-                        const SizedBox(width: 6),
-                        Text('Listo para entrega',
-                            style: TextStyle(color: AppTheme.accentGreen, fontSize: 12, fontWeight: FontWeight.w600)),
-                      ]),
-                    ),
+                  // Ready state: individual delivery button
+                  if (eq.status == 'ready' && _tenant != null) ...[
+                    const SizedBox(height: 10),
+                    Row(children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 34,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push<bool>(context, MaterialPageRoute(
+                                builder: (_) => DeliveryScreen(order: _order, tenant: _tenant!),
+                              )).then((delivered) {
+                                _refreshOrder();
+                                _loadHistory();
+                                if (delivered == true && mounted) {
+                                  context.read<OrdersBloc>().add(OrdersLoadRequested());
+                                }
+                              });
+                            },
+                            icon: Icon(Icons.draw_rounded, size: 16),
+                            label: Text('Firmar y Entregar', style: TextStyle(fontSize: 11)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.accentGreen,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        height: 34,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _returnEquipment(eq),
+                          icon: Icon(Icons.undo_rounded, size: 14),
+                          label: Text('Devolver', style: TextStyle(fontSize: 11)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppTheme.accentRed,
+                            side: BorderSide(color: AppTheme.accentRed.withValues(alpha: 0.5)),
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                          ),
+                        ),
+                      ),
+                    ]),
+                  ],
                   // Delivered state
                   if (eq.status == 'delivered')
                     Padding(
