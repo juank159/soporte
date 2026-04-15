@@ -329,6 +329,108 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
+  Future<void> _editEquipmentDiagnosis(OrderEquipment eq) async {
+    final ctrl = TextEditingController(text: eq.diagnosis ?? '');
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor,
+        title: Row(children: [
+          Icon(Icons.edit_rounded, color: AppTheme.accentCyan, size: 20),
+          const SizedBox(width: 8),
+          Expanded(child: Text('Editar diagnostico',
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 16))),
+        ]),
+        content: SizedBox(
+          width: 400,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('${eq.deviceType} ${eq.deviceBrand} ${eq.deviceModel}',
+                style: TextStyle(color: AppTheme.accentCyan, fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              style: TextStyle(color: AppTheme.textPrimary),
+              decoration: InputDecoration(
+                labelText: 'Diagnostico y reparacion',
+                hintText: 'Describa el diagnostico y lo que se realizo...',
+                alignLabelWithHint: true,
+              ),
+              maxLines: 6,
+              textInputAction: TextInputAction.done,
+            ),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+
+    if (saved != true) return;
+    try {
+      await _api.dio.patch('/orders/${_order.id}/equipments/${eq.id}/diagnosis', data: {
+        'diagnosis': ctrl.text.trim(),
+      });
+      _refreshOrder();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Diagnostico actualizado'),
+          backgroundColor: AppTheme.accentGreen,
+        ));
+      }
+    } catch (e) {
+      if (mounted) _showError('Error: $e');
+    }
+  }
+
+  Future<void> _editOrderDiagnosis() async {
+    final ctrl = TextEditingController(text: _order.diagnosis ?? '');
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor,
+        title: Row(children: [
+          Icon(Icons.edit_rounded, color: AppTheme.accentCyan, size: 20),
+          const SizedBox(width: 8),
+          Text('Editar diagnostico', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
+        ]),
+        content: SizedBox(
+          width: 400,
+          child: TextField(
+            controller: ctrl,
+            autofocus: true,
+            style: TextStyle(color: AppTheme.textPrimary),
+            decoration: InputDecoration(
+              labelText: 'Diagnostico y reparacion',
+              hintText: 'Describa el diagnostico y lo que se realizo...',
+              alignLabelWithHint: true,
+            ),
+            maxLines: 6,
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Guardar')),
+        ],
+      ),
+    );
+
+    if (saved != true) return;
+    try {
+      await _orderService.addDiagnosis(_order.id, diagnosis: ctrl.text.trim());
+      _refreshOrder();
+    } catch (e) {
+      if (mounted) _showError('Error: $e');
+    }
+  }
+
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(msg), backgroundColor: AppTheme.accentOrange));
@@ -1489,7 +1591,28 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   if (eq.technicianId != null && _getTechName(eq.technicianId).isNotEmpty)
                     _infoRow('Tecnico', _getTechName(eq.technicianId)),
                   _infoRow('Problema', eq.problemReported),
-                  if (eq.diagnosis != null) _infoRow('Diagnostico', eq.diagnosis!),
+                  if (eq.diagnosis != null && eq.diagnosis!.isNotEmpty)
+                    InkWell(
+                      onTap: eq.status != 'delivered' ? () => _editEquipmentDiagnosis(eq) : null,
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        SizedBox(width: 90, child: Text('Reparacion',
+                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12))),
+                        Expanded(child: Text(eq.diagnosis!,
+                            style: TextStyle(color: AppTheme.textPrimary, fontSize: 12))),
+                        if (eq.status != 'delivered')
+                          Icon(Icons.edit_rounded, color: AppTheme.accentCyan.withValues(alpha: 0.5), size: 14),
+                      ]),
+                    )
+                  else if (eq.status != 'received' && eq.status != 'delivered')
+                    InkWell(
+                      onTap: () => _editEquipmentDiagnosis(eq),
+                      child: Row(children: [
+                        Icon(Icons.add_circle_outline_rounded, color: AppTheme.accentCyan, size: 14),
+                        const SizedBox(width: 4),
+                        Text('Agregar diagnostico/reparacion',
+                            style: TextStyle(color: AppTheme.accentCyan, fontSize: 11)),
+                      ]),
+                    ),
                   if (eq.laborCost > 0) _infoRow('Valor', '\$${formatMoney(eq.laborCost)}'),
                   // Warranty with progress bar
                   if (eq.status == 'delivered' && eq.warrantyDays > 0 && eq.deliveredAt != null)
@@ -1651,9 +1774,27 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             Text(_order.problemReported,
                 style: TextStyle(color: AppTheme.textPrimary, fontSize: 13)),
           ]),
-          if (_order.diagnosis != null)
-            _sectionCard('Diagnostico', Icons.medical_services_rounded, AppTheme.accentCyan, [
-              Text(_order.diagnosis!, style: TextStyle(color: AppTheme.textPrimary, fontSize: 13)),
+          if (_order.diagnosis != null && _order.diagnosis!.isNotEmpty)
+            _sectionCard('Reparacion', Icons.build_rounded, AppTheme.accentCyan, [
+              InkWell(
+                onTap: _order.status != 'delivered' ? _editOrderDiagnosis : null,
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(child: Text(_order.diagnosis!, style: TextStyle(color: AppTheme.textPrimary, fontSize: 13))),
+                  if (_order.status != 'delivered')
+                    Icon(Icons.edit_rounded, color: AppTheme.accentCyan.withValues(alpha: 0.5), size: 16),
+                ]),
+              ),
+            ])
+          else if (_order.status != 'received' && _order.status != 'delivered' && _order.equipments.isEmpty)
+            _sectionCard('Reparacion', Icons.build_rounded, AppTheme.accentCyan, [
+              InkWell(
+                onTap: _editOrderDiagnosis,
+                child: Row(children: [
+                  Icon(Icons.add_circle_outline_rounded, color: AppTheme.accentCyan, size: 16),
+                  const SizedBox(width: 6),
+                  Text('Agregar diagnostico/reparacion', style: TextStyle(color: AppTheme.accentCyan, fontSize: 13)),
+                ]),
+              ),
             ]),
         ] else
           _sectionCard('Problemas reportados', Icons.report_rounded, AppTheme.accentOrange, [
