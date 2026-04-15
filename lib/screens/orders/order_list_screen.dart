@@ -474,7 +474,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                                 child: OrderDetailScreen(order: order),
                               ),
                             ),
-                          ).then((_) => _loadOrders());
+                          ).then((_) { if (mounted) _loadOrders(); });
                         },
                         child: GlassCard(
                           padding: EdgeInsets.all(14),

@@ -967,10 +967,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ],
           ),
 
-          // Assign technician warning
-          if (_order.technicianId == null &&
+          // Assign technician warning (only for single-device orders without technician)
+          if (_order.equipments.isEmpty &&
+              _order.technicianId == null &&
               _order.status != 'delivered' &&
-              _order.status != 'delivered') ...[
+              _order.status != 'returned') ...[
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,

@@ -184,17 +184,17 @@ class PdfGeneratorService {
                 style: const pw.TextStyle(fontSize: 10, lineSpacing: 4),
                 children: [
                   pw.TextSpan(text: 'GARANTIA: ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  if (hasWarranty) ...[
+                  if (hasWarranty && warrantyMonths > 0) ...[
                     const pw.TextSpan(text: 'Se otorga garantia de '),
                     pw.TextSpan(text: '$warrantyMonths mes(es)',
                         style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
                     const pw.TextSpan(
                         text: ' sobre el trabajo realizado. La garantia cubre exclusivamente la reparacion efectuada y no aplica por mal uso, golpes, humedad u otras causas ajenas al servicio prestado.'),
                   ] else ...[
-                    const pw.TextSpan(text: 'Este servicio '),
-                    pw.TextSpan(text: 'NO incluye garantia',
+                    const pw.TextSpan(text: 'La garantia de este servicio es '),
+                    pw.TextSpan(text: 'instantanea',
                         style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                    const pw.TextSpan(text: '. El cliente ha sido informado y acepta esta condicion.'),
+                    const pw.TextSpan(text: '. Se entrega el equipo probado y funcionando. No se otorga garantia adicional sobre el trabajo realizado. El cliente ha sido informado y acepta esta condicion.'),
                   ],
                 ],
               ),
