@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:dio/dio.dart' as dio;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
@@ -90,12 +91,31 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
           _assignedTechnician = _technicians
               .where((t) => t.id == widget.order.technicianId)
               .firstOrNull;
+          // Auto-load technician signature if available
+          if (_assignedTechnician != null && _assignedTechnician!.hasSignature) {
+            _loadTechnicianSignature(_assignedTechnician!.signatureUrl!);
+          }
         }
         _loadingTechnicians = false;
       });
     } catch (_) {
       setState(() => _loadingTechnicians = false);
     }
+  }
+
+  Future<void> _loadTechnicianSignature(String sigUrl) async {
+    try {
+      Uint8List? bytes;
+      if (sigUrl.contains('base64,')) {
+        bytes = base64Decode(sigUrl.split('base64,').last);
+      } else if (sigUrl.startsWith('http')) {
+        final res = await _api.dio.get(sigUrl, options: dio.Options(responseType: dio.ResponseType.bytes));
+        bytes = Uint8List.fromList(res.data as List<int>);
+      }
+      if (bytes != null && bytes.isNotEmpty && mounted) {
+        setState(() => _technicianSignature = bytes);
+      }
+    } catch (_) {}
   }
 
   bool get _canGenerate =>
@@ -485,6 +505,9 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                             _assignedTechnician = tech;
                             _technicianSignature = null;
                           });
+                          if (tech.hasSignature) {
+                            _loadTechnicianSignature(tech.signatureUrl!);
+                          }
                         },
                       );
                     }).toList(),
@@ -512,13 +535,39 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                             fontSize: 14)),
                   ]),
                   const SizedBox(height: 12),
-                  SignaturePadWidget(
-                    key: ValueKey(
-                        'tech_sig_${_assignedTechnician!.id}'),
-                    label: 'Firme aqui',
-                    onSigned: (data) =>
-                        setState(() => _technicianSignature = data),
-                  ),
+                  // If technician already has saved signature, show it
+                  if (_technicianSignature != null && _assignedTechnician!.hasSignature)
+                    Column(children: [
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accentGreen.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppTheme.accentGreen.withValues(alpha: 0.3)),
+                        ),
+                        child: Column(children: [
+                          Image.memory(_technicianSignature!, height: 60),
+                          const SizedBox(height: 6),
+                          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            Icon(Icons.check_circle_rounded, color: AppTheme.accentGreen, size: 16),
+                            const SizedBox(width: 6),
+                            Text('Firma guardada', style: TextStyle(color: AppTheme.accentGreen, fontSize: 12, fontWeight: FontWeight.w600)),
+                          ]),
+                        ]),
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () => setState(() => _technicianSignature = null),
+                        child: Text('Firmar manualmente', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                      ),
+                    ])
+                  else
+                    SignaturePadWidget(
+                      key: ValueKey('tech_sig_${_assignedTechnician!.id}'),
+                      label: 'Firme aqui',
+                      onSigned: (data) => setState(() => _technicianSignature = data),
+                    ),
                 ],
               ),
             ),

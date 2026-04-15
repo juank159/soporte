@@ -1,7 +1,10 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../services/api_service.dart';
 import '../../widgets/glass_card.dart';
+import '../../widgets/signature_pad_widget.dart';
 
 class UsersManagementScreen extends StatefulWidget {
   const UsersManagementScreen({super.key});
@@ -300,6 +303,92 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
     } catch (_) {}
   }
 
+  Future<void> _editSignature(Map<String, dynamic> user) async {
+    Uint8List? signatureData;
+    final hasExisting = user['signatureUrl'] != null && (user['signatureUrl'] as String).isNotEmpty;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: AppTheme.surfaceColor,
+          title: Row(children: [
+            Icon(Icons.draw_rounded, color: AppTheme.accentPurple),
+            SizedBox(width: 10),
+            Expanded(child: Text('Firma de ${user['fullName']}',
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 16))),
+          ]),
+          content: SizedBox(
+            width: 400,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              if (hasExisting && signatureData == null) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentGreen.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppTheme.accentGreen.withValues(alpha: 0.3)),
+                  ),
+                  child: Column(children: [
+                    Builder(builder: (_) {
+                      try {
+                        final url = user['signatureUrl'] as String;
+                        if (url.contains('base64,')) {
+                          return Image.memory(base64Decode(url.split('base64,').last), height: 60);
+                        }
+                      } catch (_) {}
+                      return Icon(Icons.check_circle_rounded, color: AppTheme.accentGreen, size: 40);
+                    }),
+                    const SizedBox(height: 6),
+                    Text('Firma actual guardada', style: TextStyle(color: AppTheme.accentGreen, fontSize: 12)),
+                  ]),
+                ),
+                const SizedBox(height: 12),
+                Text('Firme abajo para reemplazar:', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+              ],
+              const SizedBox(height: 8),
+              SignaturePadWidget(
+                label: 'Firme aqui',
+                onSigned: (data) => setDialogState(() => signatureData = data),
+              ),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+            ElevatedButton(
+              onPressed: signatureData == null ? null : () => Navigator.pop(ctx, true),
+              child: Text('Guardar firma'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (saved != true || signatureData == null) return;
+
+    try {
+      final b64 = 'data:image/png;base64,${base64Encode(signatureData!)}';
+      await _api.dio.put('/users/${user['id']}/signature', data: {
+        'signatureUrl': b64,
+      });
+      _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Firma guardada para ${user['fullName']}'),
+          backgroundColor: AppTheme.accentGreen,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error al guardar firma: $e'),
+          backgroundColor: AppTheme.accentRed,
+        ));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -386,8 +475,16 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                                         fontSize: 12),
                                     overflow: TextOverflow.ellipsis),
                                 SizedBox(height: 2),
-                                StatusBadge(
-                                    label: _roleLabel(role), color: color),
+                                Row(children: [
+                                  StatusBadge(label: _roleLabel(role), color: color),
+                                  if ((role == 'technician' || role == 'supervisor') &&
+                                      user['signatureUrl'] != null &&
+                                      (user['signatureUrl'] as String).isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: 6),
+                                      child: Icon(Icons.draw_rounded, color: AppTheme.accentGreen, size: 14),
+                                    ),
+                                ]),
                               ],
                             ),
                           ),
@@ -400,6 +497,9 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                                 switch (action) {
                                   case 'role':
                                     _changeRole(user);
+                                    break;
+                                  case 'signature':
+                                    _editSignature(user);
                                     break;
                                   case 'toggle':
                                     _toggleActive(user);
@@ -418,6 +518,18 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                                     ],
                                   ),
                                 ),
+                                if (role == 'technician' || role == 'supervisor')
+                                  PopupMenuItem(
+                                    value: 'signature',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.draw_rounded, size: 18,
+                                            color: user['signatureUrl'] != null ? AppTheme.accentGreen : AppTheme.accentOrange),
+                                        SizedBox(width: 8),
+                                        Text(user['signatureUrl'] != null ? 'Editar firma' : 'Agregar firma'),
+                                      ],
+                                    ),
+                                  ),
                                 PopupMenuItem(
                                   value: 'toggle',
                                   child: Row(

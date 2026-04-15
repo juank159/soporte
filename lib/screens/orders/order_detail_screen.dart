@@ -1194,9 +1194,23 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                           child: SizedBox(
                             height: 34,
                             child: ElevatedButton.icon(
-                              onPressed: () => _changeEquipmentStatus(eq.id, nextEqStatus),
-                              icon: Icon(Icons.arrow_forward_rounded, size: 16),
-                              label: Text(_nextStatusLabel(nextEqStatus),
+                              onPressed: () {
+                                if (nextEqStatus == 'delivered' && _tenant != null) {
+                                  Navigator.push<bool>(context, MaterialPageRoute(
+                                    builder: (_) => DeliveryScreen(order: _order, tenant: _tenant!),
+                                  )).then((delivered) {
+                                    _refreshOrder();
+                                    _loadHistory();
+                                    if (delivered == true && mounted) {
+                                      context.read<OrdersBloc>().add(OrdersLoadRequested());
+                                    }
+                                  });
+                                } else {
+                                  _changeEquipmentStatus(eq.id, nextEqStatus);
+                                }
+                              },
+                              icon: Icon(nextEqStatus == 'delivered' ? Icons.draw_rounded : Icons.arrow_forward_rounded, size: 16),
+                              label: Text(nextEqStatus == 'delivered' ? 'Firmar y Entregar' : _nextStatusLabel(nextEqStatus),
                                   style: TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: eqColor,
