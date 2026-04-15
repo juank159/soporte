@@ -15,6 +15,7 @@ class PdfGeneratorService {
     required Uint8List technicianSignaturePng,
     required String technicianName,
     DateTime? deliveryDate,
+    String? paymentMethod,
   }) async {
     final pdf = pw.Document(
       title: 'Acta de Entrega - ${order.orderNumber}',
@@ -72,28 +73,30 @@ class PdfGeneratorService {
         pageFormat: PdfPageFormat.letter,
         margin: const pw.EdgeInsets.symmetric(horizontal: 40, vertical: 30),
         build: (context) => [
-          // ========== HEADER ==========
-          pw.Center(
-            child: pw.Column(children: [
-              if (logoWidget != null) ...[logoWidget, pw.SizedBox(height: 6)],
-              pw.Text(tenant.name.toUpperCase(),
-                  style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-              if (tenant.nit != null && tenant.nit!.isNotEmpty)
-                pw.Text('NIT ${tenant.nit}', style: const pw.TextStyle(fontSize: 10)),
-              if (tenant.address != null && tenant.address!.isNotEmpty)
-                pw.Text(tenant.address!, style: const pw.TextStyle(fontSize: 9)),
-              if (tenant.phone != null && tenant.phone!.isNotEmpty)
-                pw.Text('Tel: ${tenant.phone}', style: const pw.TextStyle(fontSize: 9)),
-            ]),
+          // ========== HEADER + TITLE in one row ==========
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.center,
+            children: [
+              if (logoWidget != null) ...[
+                pw.SizedBox(width: 50, child: logoWidget),
+                pw.SizedBox(width: 10),
+              ],
+              pw.Expanded(
+                child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.center, children: [
+                  pw.Text(tenant.name.toUpperCase(),
+                      style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                  if (tenant.nit != null && tenant.nit!.isNotEmpty)
+                    pw.Text('NIT ${tenant.nit}', style: const pw.TextStyle(fontSize: 9)),
+                ]),
+              ),
+            ],
           ),
-          pw.SizedBox(height: 12),
-
-          // ========== TITLE ==========
+          pw.SizedBox(height: 6),
           pw.Center(
             child: pw.Text('ACTA DE ENTREGA DE SERVICIO TECNICO',
-                style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
+                style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
           ),
-          pw.SizedBox(height: 12),
+          pw.SizedBox(height: 8),
 
           // ========== CLIENT & ORDER DATA (table format) ==========
           pw.Table(
@@ -116,12 +119,11 @@ class PdfGeneratorService {
           // ========== INTRO PARAGRAPH ==========
           pw.Text(
             isMulti
-                ? 'Por medio de la presente acta se hace entrega de los siguientes equipos que ingresaron a nuestras instalaciones el dia ${AppDateUtils.formatDate(order.createdAt)} para servicio tecnico:'
-                : 'Por medio de la presente acta se hace entrega del equipo que ingreso a nuestras instalaciones el dia ${AppDateUtils.formatDate(order.createdAt)} para servicio tecnico.',
-            style: const pw.TextStyle(fontSize: 11, lineSpacing: 5),
-            textAlign: pw.TextAlign.justify,
+                ? 'Se hace entrega de los siguientes equipos que ingresaron el ${AppDateUtils.formatDate(order.createdAt)}:'
+                : 'Se hace entrega del equipo que ingreso el ${AppDateUtils.formatDate(order.createdAt)}:',
+            style: const pw.TextStyle(fontSize: 10, lineSpacing: 3),
           ),
-          pw.SizedBox(height: 10),
+          pw.SizedBox(height: 6),
 
           // ========== EQUIPMENT DETAILS ==========
           ...equipmentWidgets,
@@ -161,12 +163,24 @@ class PdfGeneratorService {
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('VALOR TOTAL DEL SERVICIO',
+                  pw.Text('VALOR TOTAL',
                       style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
                   pw.Text('\$$totalStr',
                       style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
                 ],
               ),
+              if (paymentMethod != null) ...[
+                pw.SizedBox(height: 4),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('METODO DE PAGO',
+                        style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                    pw.Text(paymentMethod,
+                        style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                  ],
+                ),
+              ],
             ]),
           ),
           pw.SizedBox(height: 8),

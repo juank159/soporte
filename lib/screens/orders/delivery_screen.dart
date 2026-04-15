@@ -42,6 +42,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
   final _clientNameCtrl = TextEditingController();
   final _totalCtrl = TextEditingController();
   final _warrantyMonthsCtrl = TextEditingController();
+  String? _paymentMethod; // efectivo, transferencia, tarjeta_credito, tarjeta_debito
 
   bool? _hasWarranty; // null = not selected yet
 
@@ -127,7 +128,8 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
       _assignedTechnician != null &&
       _totalCtrl.text.isNotEmpty &&
       _hasWarranty != null &&
-      (_hasWarranty == false || _warrantyMonthsCtrl.text.isNotEmpty);
+      (_hasWarranty == false || _warrantyMonthsCtrl.text.isNotEmpty) &&
+      _paymentMethod != null;
 
   Future<void> _generateAndDeliver() async {
     if (!_canGenerate) return;
@@ -153,7 +155,8 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
 
       // Change ONLY ready equipment to delivered with individual warranty + cost
       final readyEquipments = widget.order.equipments.where((eq) => eq.status == 'ready').toList();
-      final deliveryNote = 'Entregado por \$${_totalCtrl.text.trim()} - Garantia: ${_hasWarranty == true ? '$warrantyMonths meses' : 'Instantanea'}';
+      final paymentLabel = _paymentMethodLabel(_paymentMethod!);
+      final deliveryNote = 'Entregado por \$${_totalCtrl.text.trim()} - $paymentLabel - Garantia: ${_hasWarranty == true ? '$warrantyMonths meses' : 'Instantanea'}';
 
       if (widget.order.equipments.isNotEmpty) {
         // Divide cost equally if multiple equipment, or full cost if one
@@ -295,6 +298,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         clientName: clientName,
         technicianSignaturePng: _technicianSignature!,
         technicianName: techName,
+        paymentMethod: _paymentMethodLabel(_paymentMethod!),
       );
 
       setState(() {
@@ -309,6 +313,16 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
           backgroundColor: AppTheme.accentRed,
         ));
       }
+    }
+  }
+
+  String _paymentMethodLabel(String method) {
+    switch (method) {
+      case 'efectivo': return 'Efectivo';
+      case 'transferencia': return 'Transferencia';
+      case 'tarjeta_credito': return 'Tarjeta de Credito';
+      case 'tarjeta_debito': return 'Tarjeta de Debito';
+      default: return method;
     }
   }
 
@@ -444,6 +458,44 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                         ),
                       ),
                     ],
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text('Metodo de pago: *',
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ChoiceChip(
+                      avatar: Icon(Icons.money_rounded, size: 16,
+                          color: _paymentMethod == 'efectivo' ? AppTheme.accentGreen : AppTheme.textSecondary),
+                      label: Text('Efectivo'),
+                      selected: _paymentMethod == 'efectivo',
+                      onSelected: (_) => setState(() => _paymentMethod = 'efectivo'),
+                    ),
+                    ChoiceChip(
+                      avatar: Icon(Icons.swap_horiz_rounded, size: 16,
+                          color: _paymentMethod == 'transferencia' ? AppTheme.accentBlue : AppTheme.textSecondary),
+                      label: Text('Transferencia'),
+                      selected: _paymentMethod == 'transferencia',
+                      onSelected: (_) => setState(() => _paymentMethod = 'transferencia'),
+                    ),
+                    ChoiceChip(
+                      avatar: Icon(Icons.credit_card_rounded, size: 16,
+                          color: _paymentMethod == 'tarjeta_credito' ? AppTheme.accentPurple : AppTheme.textSecondary),
+                      label: Text('T. Credito'),
+                      selected: _paymentMethod == 'tarjeta_credito',
+                      onSelected: (_) => setState(() => _paymentMethod = 'tarjeta_credito'),
+                    ),
+                    ChoiceChip(
+                      avatar: Icon(Icons.credit_card_rounded, size: 16,
+                          color: _paymentMethod == 'tarjeta_debito' ? AppTheme.accentCyan : AppTheme.textSecondary),
+                      label: Text('T. Debito'),
+                      selected: _paymentMethod == 'tarjeta_debito',
+                      onSelected: (_) => setState(() => _paymentMethod = 'tarjeta_debito'),
+                    ),
                   ],
                 ),
               ],
@@ -719,12 +771,14 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                     ? 'Ingrese el valor total del servicio'
                     : _hasWarranty == null
                         ? 'Seleccione si tiene garantia (Si/No)'
-                        : _assignedTechnician == null
-                            ? 'Seleccione el tecnico'
-                            : _clientSignature == null ||
-                                    _technicianSignature == null
-                                ? 'Complete ambas firmas'
-                                : 'Complete el nombre de quien recibe',
+                        : _paymentMethod == null
+                            ? 'Seleccione el metodo de pago'
+                            : _assignedTechnician == null
+                                ? 'Seleccione el tecnico'
+                                : _clientSignature == null ||
+                                        _technicianSignature == null
+                                    ? 'Complete ambas firmas'
+                                    : 'Complete el nombre de quien recibe',
                 style: const TextStyle(
                     fontSize: 12, color: AppTheme.accentOrange),
               ),
