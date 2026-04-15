@@ -301,12 +301,13 @@ class PdfGeneratorService {
             pw.Text(eq.problemReported, style: const pw.TextStyle(fontSize: 10)),
             if (eq.diagnosis != null && eq.diagnosis!.isNotEmpty) ...[
               pw.SizedBox(height: 4),
-              pw.Text('Reparacion realizada:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+              pw.Text('Diagnostico:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
               pw.Text(eq.diagnosis!, style: const pw.TextStyle(fontSize: 10)),
             ],
-            if (repairNotes != null) ...[
+            if (repairNotes != null && repairNotes.isNotEmpty) ...[
               pw.SizedBox(height: 4),
-              pw.Text('Detalle: $repairNotes', style: const pw.TextStyle(fontSize: 9)),
+              pw.Text('Reparacion realizada:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+              pw.Text(repairNotes, style: const pw.TextStyle(fontSize: 10)),
             ],
           ],
         ),
@@ -350,8 +351,13 @@ class PdfGeneratorService {
             pw.Text(order.problemReported, style: const pw.TextStyle(fontSize: 10)),
             if (order.diagnosis != null && order.diagnosis!.isNotEmpty) ...[
               pw.SizedBox(height: 4),
-              pw.Text('Reparacion realizada:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+              pw.Text('Diagnostico:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
               pw.Text(order.diagnosis!, style: const pw.TextStyle(fontSize: 10)),
+            ],
+            if (order.notes != null && order.notes!.isNotEmpty && !order.notes!.startsWith('Entregado por')) ...[
+              pw.SizedBox(height: 4),
+              pw.Text('Reparacion realizada:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+              pw.Text(order.notes!, style: const pw.TextStyle(fontSize: 10)),
             ],
           ],
         ),
