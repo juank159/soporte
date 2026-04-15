@@ -145,12 +145,27 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         });
       } catch (_) {}
 
-      // Change status to delivered
+      // Change each ready equipment to delivered
+      final deliveryNote = 'Entregado por \$${_totalCtrl.text.trim()} - Garantia: ${_hasWarranty == true ? '$warrantyMonths meses' : 'Sin garantia'}';
+      if (widget.order.equipments.isNotEmpty) {
+        for (final eq in widget.order.equipments) {
+          if (eq.status == 'ready') {
+            try {
+              await _api.dio.patch('/orders/${widget.order.id}/equipments/${eq.id}/status', data: {
+                'status': 'delivered',
+                'notes': deliveryNote,
+              });
+            } catch (_) {}
+          }
+        }
+        _statusUpdated = true;
+      }
+
+      // Change order status to delivered
       try {
         await _api.dio.patch('/orders/${widget.order.id}/status', data: {
           'status': 'delivered',
-          'notes':
-              'Entregado por \$${_totalCtrl.text.trim()} - Garantia: ${_hasWarranty == true ? '$warrantyMonths meses' : 'Sin garantia'}',
+          'notes': deliveryNote,
         });
         _statusUpdated = true;
       } catch (_) {}

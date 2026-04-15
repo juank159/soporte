@@ -6,8 +6,6 @@ import '../models/service_order.dart';
 import '../models/tenant.dart';
 import '../config/date_utils.dart';
 
-/// Genera el PDF del Acta de Entrega de Servicio Tecnico.
-/// Formato tipo carta basado en el modelo del cliente.
 class PdfGeneratorService {
   Future<Uint8List> generateDeliveryAct({
     required ServiceOrder order,
@@ -25,15 +23,11 @@ class PdfGeneratorService {
 
     final now = deliveryDate ?? DateTime.now();
     final dateStr = AppDateUtils.formatDate(now);
-
-    final device = order.device;
     final customer = order.customer;
-    final equipoDesc =
-        '${device?.type ?? ''} ${device?.brand ?? ''} ${device?.model ?? ''}'.trim();
-    final serialText = device?.serial ?? device?.imei ?? 'N/A';
     final totalStr = _formatMoney(order.total);
     final warrantyMonths = (order.warrantyDays / 30).round();
     final hasWarranty = order.warrantyDays > 0;
+    final isMulti = order.equipments.isNotEmpty;
 
     // Logo
     pw.Widget? logoWidget;
@@ -46,319 +40,317 @@ class PdfGeneratorService {
       } catch (_) {}
     }
 
-    // Signatures - validate PNG header (0x89 0x50 0x4E 0x47)
+    // Signatures
     pw.Widget? clientSigWidget;
     pw.Widget? techSigWidget;
     if (clientSignaturePng.length > 50 &&
-        clientSignaturePng[0] == 0x89 &&
-        clientSignaturePng[1] == 0x50) {
-      try {
-        clientSigWidget =
-            pw.Image(pw.MemoryImage(clientSignaturePng), height: 50);
-      } catch (_) {}
+        clientSignaturePng[0] == 0x89 && clientSignaturePng[1] == 0x50) {
+      try { clientSigWidget = pw.Image(pw.MemoryImage(clientSignaturePng), height: 50); } catch (_) {}
     }
     if (technicianSignaturePng.length > 50 &&
-        technicianSignaturePng[0] == 0x89 &&
-        technicianSignaturePng[1] == 0x50) {
-      try {
-        techSigWidget =
-            pw.Image(pw.MemoryImage(technicianSignaturePng), height: 50);
-      } catch (_) {}
+        technicianSignaturePng[0] == 0x89 && technicianSignaturePng[1] == 0x50) {
+      try { techSigWidget = pw.Image(pw.MemoryImage(technicianSignaturePng), height: 50); } catch (_) {}
+    }
+
+    // Build equipment detail widgets
+    final equipmentWidgets = <pw.Widget>[];
+
+    if (isMulti) {
+      // Multiple equipment
+      for (int i = 0; i < order.equipments.length; i++) {
+        final eq = order.equipments[i];
+        if (eq.status != 'ready' && eq.status != 'delivered') continue; // Only include ready/delivered
+        equipmentWidgets.addAll(_buildEquipmentBlock(i + 1, eq));
+      }
+    } else if (order.device != null) {
+      // Single device (legacy)
+      equipmentWidgets.addAll(_buildSingleDeviceBlock(order));
     }
 
     pdf.addPage(
-      pw.Page(
+      pw.MultiPage(
         pageFormat: PdfPageFormat.letter,
         margin: const pw.EdgeInsets.symmetric(horizontal: 50, vertical: 40),
-        build: (context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
+        build: (context) => [
+          // ========== HEADER ==========
+          pw.Center(
+            child: pw.Column(children: [
+              if (logoWidget != null) ...[logoWidget, pw.SizedBox(height: 6)],
+              pw.Text(tenant.name.toUpperCase(),
+                  style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+              if (tenant.nit != null && tenant.nit!.isNotEmpty)
+                pw.Text('NIT ${tenant.nit}', style: const pw.TextStyle(fontSize: 10)),
+              if (tenant.address != null && tenant.address!.isNotEmpty)
+                pw.Text(tenant.address!, style: const pw.TextStyle(fontSize: 9)),
+              if (tenant.phone != null && tenant.phone!.isNotEmpty)
+                pw.Text('Tel: ${tenant.phone}', style: const pw.TextStyle(fontSize: 9)),
+            ]),
+          ),
+          pw.SizedBox(height: 20),
+
+          // ========== TITLE ==========
+          pw.Center(
+            child: pw.Text('ACTA DE ENTREGA DE SERVICIO TECNICO',
+                style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+          ),
+          pw.SizedBox(height: 20),
+
+          // ========== CLIENT & ORDER DATA (table format) ==========
+          pw.Table(
+            columnWidths: {
+              0: const pw.FixedColumnWidth(120),
+              1: const pw.FlexColumnWidth(),
+            },
             children: [
-              // ========== HEADER ==========
-              pw.Center(
-                child: pw.Column(
-                  children: [
-                    if (logoWidget != null) ...[
-                      logoWidget,
-                      pw.SizedBox(height: 6),
-                    ],
-                    pw.Text(
-                      tenant.name.toUpperCase(),
-                      style: pw.TextStyle(
-                        fontSize: 18,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    if (tenant.nit != null && tenant.nit!.isNotEmpty)
-                      pw.Text(
-                        'NIT ${tenant.nit}',
-                        style: const pw.TextStyle(fontSize: 10),
-                      ),
-                  ],
-                ),
-              ),
-              pw.SizedBox(height: 30),
+              _tableRow('FECHA', dateStr),
+              _tableRow('ORDEN No.', order.orderNumber),
+              _tableRow('CLIENTE', customer?.fullName ?? '-'),
+              _tableRow('CEDULA / NIT', customer?.idNumber ?? '-'),
+              _tableRow('TELEFONO', customer?.phone ?? '-'),
+              if (customer?.email != null && customer!.email!.isNotEmpty)
+                _tableRow('EMAIL', customer.email!),
+            ],
+          ),
+          pw.SizedBox(height: 20),
 
-              // ========== CLIENT DATA ==========
-              _labelLine('FECHA', dateStr),
-              pw.SizedBox(height: 8),
-              _labelLine('CEDULA', customer?.idNumber ?? '-'),
-              pw.SizedBox(height: 8),
-              _labelLine('NOMBRE', customer?.fullName ?? '-'),
-              pw.SizedBox(height: 8),
-              _labelLine('TELEFONO', customer?.phone ?? '-'),
-              pw.SizedBox(height: 8),
-              _labelLine('ORDEN No.', order.orderNumber),
-              pw.SizedBox(height: 30),
+          // ========== INTRO PARAGRAPH ==========
+          pw.Text(
+            isMulti
+                ? 'Por medio de la presente acta se hace entrega de los siguientes equipos que ingresaron a nuestras instalaciones el dia ${AppDateUtils.formatDate(order.createdAt)} para servicio tecnico:'
+                : 'Por medio de la presente acta se hace entrega del equipo que ingreso a nuestras instalaciones el dia ${AppDateUtils.formatDate(order.createdAt)} para servicio tecnico.',
+            style: const pw.TextStyle(fontSize: 11, lineSpacing: 5),
+            textAlign: pw.TextAlign.justify,
+          ),
+          pw.SizedBox(height: 16),
 
-              // ========== TITLE ==========
-              pw.Text(
-                'ACTA DE ENTREGA DE SERVICIO TECNICO',
-                style: pw.TextStyle(
-                  fontSize: 13,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-              pw.SizedBox(height: 20),
+          // ========== EQUIPMENT DETAILS ==========
+          ...equipmentWidgets,
 
-              // ========== BODY TEXT ==========
-              pw.RichText(
-                textAlign: pw.TextAlign.justify,
-                text: pw.TextSpan(
-                  style: const pw.TextStyle(fontSize: 11, lineSpacing: 6),
-                  children: [
-                    const pw.TextSpan(text: 'Se le hace entrega de '),
-                    pw.TextSpan(
-                      text: equipoDesc,
-                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                    ),
-                    if (serialText != 'N/A') ...[
-                      const pw.TextSpan(text: ' S/N: '),
-                      pw.TextSpan(
-                        text: serialText,
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                      ),
-                    ],
-                    const pw.TextSpan(
-                        text: ' que ingreso a nuestras instalaciones el dia '),
-                    pw.TextSpan(
-                      text: AppDateUtils.formatDate(order.createdAt),
-                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                    ),
-                    const pw.TextSpan(
-                        text: ' presentando la siguiente falla y condicion: '),
-                    pw.TextSpan(
-                      text: order.problemReported,
-                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ),
-              pw.SizedBox(height: 12),
-
-              // Diagnosis / work done
-              if (order.diagnosis != null && order.diagnosis!.isNotEmpty)
-                pw.RichText(
-                  textAlign: pw.TextAlign.justify,
-                  text: pw.TextSpan(
-                    style: const pw.TextStyle(fontSize: 11, lineSpacing: 6),
-                    children: [
-                      const pw.TextSpan(text: 'Cual se le realizo: '),
-                      pw.TextSpan(
-                        text: order.diagnosis!,
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
-              pw.SizedBox(height: 12),
-
-              // Amount
-              pw.RichText(
-                textAlign: pw.TextAlign.justify,
-                text: pw.TextSpan(
-                  style: const pw.TextStyle(fontSize: 11, lineSpacing: 6),
-                  children: [
-                    const pw.TextSpan(text: 'Por un monto de '),
-                    pw.TextSpan(
-                      text: '\$$totalStr',
-                      style: pw.TextStyle(
-                        fontWeight: pw.FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const pw.TextSpan(
-                        text:
-                            ' se le entrega probado y a satisfaccion del mismo, se le explican los cuidados que debe tener con el equipo, se le aclara a nuestro cliente que la garantia de dicho arreglo es instantanea. '),
-                    if (hasWarranty) ...[
-                      const pw.TextSpan(text: 'Si '),
-                      pw.TextSpan(
-                        text: 'X',
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                      ),
-                      const pw.TextSpan(text: ', No___. De lo contrario cuenta con '),
-                      pw.TextSpan(
-                        text: '$warrantyMonths',
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                      ),
-                      const pw.TextSpan(
-                          text:
-                              ' meses de garantia. No nos hacemos cargo de lo que suceda despues de dicho tiempo, puesto que el cuidado y durabilidad depende de usted.'),
-                    ] else ...[
-                      const pw.TextSpan(text: 'Si___, No '),
-                      pw.TextSpan(
-                        text: 'X',
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                      ),
-                      const pw.TextSpan(text: '.'),
-                    ],
-                  ],
-                ),
-              ),
-              pw.SizedBox(height: 16),
-
-              // Items detail if any
+          // ========== COST SUMMARY ==========
+          pw.SizedBox(height: 16),
+          pw.Container(
+            padding: const pw.EdgeInsets.all(10),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(width: 0.5),
+              borderRadius: pw.BorderRadius.circular(4),
+            ),
+            child: pw.Column(children: [
               if (order.items.isNotEmpty) ...[
-                pw.Text('Detalle:',
-                    style: pw.TextStyle(
-                        fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                pw.SizedBox(height: 4),
+                pw.Text('DETALLE DE COSTOS', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 6),
                 ...order.items.map((item) => pw.Padding(
-                      padding: const pw.EdgeInsets.only(bottom: 2),
-                      child: pw.Text(
-                        '  - ${item.qty}x ${item.description}: \$${_formatMoney(item.total)}',
-                        style: const pw.TextStyle(fontSize: 10),
-                      ),
-                    )),
-                if (order.laborCost > 0)
-                  pw.Text(
-                    '  - Mano de obra: \$${_formatMoney(order.laborCost)}',
-                    style: const pw.TextStyle(fontSize: 10),
+                  padding: const pw.EdgeInsets.only(bottom: 2),
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('${item.qty}x ${item.description}', style: const pw.TextStyle(fontSize: 10)),
+                      pw.Text('\$${_formatMoney(item.total)}', style: const pw.TextStyle(fontSize: 10)),
+                    ],
                   ),
-                pw.SizedBox(height: 16),
+                )),
+                if (order.laborCost > 0)
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('Mano de obra', style: const pw.TextStyle(fontSize: 10)),
+                      pw.Text('\$${_formatMoney(order.laborCost)}', style: const pw.TextStyle(fontSize: 10)),
+                    ],
+                  ),
+                pw.Divider(),
               ],
-
-              // Terms acceptance
-              pw.Text(
-                'Despues de haber leido todo lo aqui mencionado acepto los terminos y condiciones y recibo conforme.',
-                style: const pw.TextStyle(fontSize: 11, lineSpacing: 6),
-                textAlign: pw.TextAlign.justify,
-              ),
-
-              pw.Spacer(),
-
-              // ========== SIGNATURES ==========
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  // ENTREGA (technician)
-                  pw.SizedBox(
-                    width: 200,
-                    child: pw.Column(
-                      children: [
-                        if (techSigWidget != null) techSigWidget,
-                        pw.Container(
-                          decoration: const pw.BoxDecoration(
-                            border: pw.Border(
-                                bottom: pw.BorderSide(width: 1)),
-                          ),
-                          width: 200,
-                        ),
-                        pw.SizedBox(height: 4),
-                        pw.Text('ENTREGA',
-                            style: pw.TextStyle(
-                                fontSize: 10,
-                                fontWeight: pw.FontWeight.bold)),
-                        pw.Text(technicianName,
-                            style: const pw.TextStyle(fontSize: 9)),
-                      ],
-                    ),
-                  ),
-
-                  // RECIBE CONFORME (client)
-                  pw.SizedBox(
-                    width: 200,
-                    child: pw.Column(
-                      children: [
-                        if (clientSigWidget != null) clientSigWidget,
-                        pw.Container(
-                          decoration: const pw.BoxDecoration(
-                            border: pw.Border(
-                                bottom: pw.BorderSide(width: 1)),
-                          ),
-                          width: 200,
-                        ),
-                        pw.SizedBox(height: 4),
-                        pw.Text('RECIBE CONFORME',
-                            style: pw.TextStyle(
-                                fontSize: 10,
-                                fontWeight: pw.FontWeight.bold)),
-                        pw.Text(clientName,
-                            style: const pw.TextStyle(fontSize: 9)),
-                      ],
-                    ),
-                  ),
+                  pw.Text('VALOR TOTAL DEL SERVICIO',
+                      style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                  pw.Text('\$$totalStr',
+                      style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
                 ],
               ),
-              pw.SizedBox(height: 30),
+            ]),
+          ),
+          pw.SizedBox(height: 16),
 
-              // ========== FOOTER ==========
-              pw.Center(
-                child: pw.Column(
-                  children: [
-                    if (tenant.address != null && tenant.address!.isNotEmpty)
-                      pw.Text(
-                        tenant.address!.toUpperCase(),
-                        style: pw.TextStyle(
-                          fontSize: 9,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                        textAlign: pw.TextAlign.center,
-                      ),
-                    if (tenant.phone != null && tenant.phone!.isNotEmpty)
-                      pw.Text(
-                        'CEL: ${tenant.phone}',
-                        style: pw.TextStyle(
-                          fontSize: 9,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
+          // ========== WARRANTY ==========
+          pw.RichText(
+            textAlign: pw.TextAlign.justify,
+            text: pw.TextSpan(
+              style: const pw.TextStyle(fontSize: 11, lineSpacing: 5),
+              children: [
+                const pw.TextSpan(text: 'GARANTIA: '),
+                if (hasWarranty) ...[
+                  const pw.TextSpan(text: 'Se otorga garantia de '),
+                  pw.TextSpan(text: '$warrantyMonths mes(es)',
+                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                  const pw.TextSpan(
+                      text: ' sobre el trabajo realizado. La garantia cubre exclusivamente la reparacion efectuada y no aplica por mal uso, golpes, humedad u otras causas ajenas al servicio prestado.'),
+                ] else ...[
+                  const pw.TextSpan(text: 'Este servicio '),
+                  pw.TextSpan(text: 'NO incluye garantia',
+                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                  const pw.TextSpan(text: '. El cliente ha sido informado y acepta esta condicion.'),
+                ],
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 12),
+
+          // ========== TERMS ==========
+          pw.Text(
+            'El cliente declara recibir el(los) equipo(s) en funcionamiento, probado(s) y a satisfaccion. Se le han explicado los cuidados que debe tener. Despues de haber leido todo lo aqui mencionado acepta los terminos y condiciones y recibe conforme.',
+            style: const pw.TextStyle(fontSize: 10, lineSpacing: 5),
+            textAlign: pw.TextAlign.justify,
+          ),
+          pw.SizedBox(height: 30),
+
+          // ========== SIGNATURES ==========
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              _signatureBlock(techSigWidget, 'ENTREGA', technicianName),
+              _signatureBlock(clientSigWidget, 'RECIBE CONFORME', clientName),
             ],
-          );
-        },
+          ),
+          pw.SizedBox(height: 20),
+
+          // ========== FOOTER ==========
+          pw.Center(
+            child: pw.Text(
+              '${tenant.name} - ${tenant.address ?? ''} - Tel: ${tenant.phone ?? ''}',
+              style: const pw.TextStyle(fontSize: 8),
+              textAlign: pw.TextAlign.center,
+            ),
+          ),
+        ],
       ),
     );
 
     return pdf.save();
   }
 
-  pw.Widget _labelLine(String label, String value) {
-    return pw.Row(
-      children: [
-        pw.Text(
-          '$label: ',
-          style: pw.TextStyle(
-            fontSize: 11,
-            fontWeight: pw.FontWeight.bold,
-          ),
+  // ===== Equipment block for multi-device =====
+  List<pw.Widget> _buildEquipmentBlock(int number, OrderEquipment eq) {
+    return [
+      pw.Container(
+        padding: const pw.EdgeInsets.all(10),
+        margin: const pw.EdgeInsets.only(bottom: 12),
+        decoration: pw.BoxDecoration(
+          border: pw.Border.all(width: 0.5, color: PdfColors.grey400),
+          borderRadius: pw.BorderRadius.circular(4),
         ),
-        pw.Expanded(
-          child: pw.Container(
-            decoration: const pw.BoxDecoration(
-              border: pw.Border(bottom: pw.BorderSide(width: 0.5)),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text('EQUIPO $number',
+                style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 6),
+            pw.Table(
+              columnWidths: {
+                0: const pw.FixedColumnWidth(100),
+                1: const pw.FlexColumnWidth(),
+              },
+              children: [
+                _tableRow('Tipo', eq.deviceType),
+                _tableRow('Marca', eq.deviceBrand),
+                _tableRow('Modelo', eq.deviceModel),
+                if (eq.deviceSerial != null) _tableRow('Serial / IMEI', eq.deviceSerial!),
+                if (eq.deviceColor != null) _tableRow('Color', eq.deviceColor!),
+                if (eq.accessories != null && eq.accessories!.isNotEmpty)
+                  _tableRow('Accesorios', eq.accessories!.join(', ')),
+              ],
             ),
-            padding: const pw.EdgeInsets.only(bottom: 2),
-            child: pw.Text(
-              value,
-              style: const pw.TextStyle(fontSize: 11),
-            ),
-          ),
+            pw.SizedBox(height: 8),
+            pw.Text('Falla reportada:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+            pw.Text(eq.problemReported, style: const pw.TextStyle(fontSize: 10)),
+            if (eq.diagnosis != null && eq.diagnosis!.isNotEmpty) ...[
+              pw.SizedBox(height: 6),
+              pw.Text('Diagnostico y trabajo realizado:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+              pw.Text(eq.diagnosis!, style: const pw.TextStyle(fontSize: 10)),
+            ],
+            if (eq.notes != null && eq.notes!.isNotEmpty) ...[
+              pw.SizedBox(height: 4),
+              pw.Text('Observaciones: ${eq.notes!}', style: const pw.TextStyle(fontSize: 9)),
+            ],
+          ],
         ),
-      ],
+      ),
+    ];
+  }
+
+  // ===== Single device block (legacy) =====
+  List<pw.Widget> _buildSingleDeviceBlock(ServiceOrder order) {
+    final device = order.device!;
+    return [
+      pw.Container(
+        padding: const pw.EdgeInsets.all(10),
+        margin: const pw.EdgeInsets.only(bottom: 12),
+        decoration: pw.BoxDecoration(
+          border: pw.Border.all(width: 0.5, color: PdfColors.grey400),
+          borderRadius: pw.BorderRadius.circular(4),
+        ),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text('EQUIPO', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 6),
+            pw.Table(
+              columnWidths: {
+                0: const pw.FixedColumnWidth(100),
+                1: const pw.FlexColumnWidth(),
+              },
+              children: [
+                _tableRow('Tipo', device.type ?? '-'),
+                _tableRow('Marca', device.brand ?? '-'),
+                _tableRow('Modelo', device.model ?? '-'),
+                if (device.serial != null) _tableRow('Serial / IMEI', device.serial!),
+                if (device.color != null) _tableRow('Color', device.color!),
+                if (device.accessories != null && device.accessories!.isNotEmpty)
+                  _tableRow('Accesorios', device.accessories!.join(', ')),
+              ],
+            ),
+            pw.SizedBox(height: 8),
+            pw.Text('Falla reportada:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+            pw.Text(order.problemReported, style: const pw.TextStyle(fontSize: 10)),
+            if (order.diagnosis != null && order.diagnosis!.isNotEmpty) ...[
+              pw.SizedBox(height: 6),
+              pw.Text('Diagnostico y trabajo realizado:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+              pw.Text(order.diagnosis!, style: const pw.TextStyle(fontSize: 10)),
+            ],
+          ],
+        ),
+      ),
+    ];
+  }
+
+  pw.Widget _signatureBlock(pw.Widget? sigWidget, String label, String name) {
+    return pw.SizedBox(
+      width: 200,
+      child: pw.Column(children: [
+        if (sigWidget != null) sigWidget,
+        pw.Container(
+          decoration: const pw.BoxDecoration(
+            border: pw.Border(bottom: pw.BorderSide(width: 1)),
+          ),
+          width: 200,
+        ),
+        pw.SizedBox(height: 4),
+        pw.Text(label, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+        pw.Text(name, style: const pw.TextStyle(fontSize: 9)),
+      ]),
     );
+  }
+
+  pw.TableRow _tableRow(String label, String value) {
+    return pw.TableRow(children: [
+      pw.Padding(
+        padding: const pw.EdgeInsets.symmetric(vertical: 2),
+        child: pw.Text('$label:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+      ),
+      pw.Padding(
+        padding: const pw.EdgeInsets.symmetric(vertical: 2),
+        child: pw.Text(value, style: const pw.TextStyle(fontSize: 10)),
+      ),
+    ]);
   }
 
   String _formatMoney(double amount) {
