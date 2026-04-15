@@ -234,6 +234,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
+  /// Equipment that are ready to be delivered (not already delivered/returned)
+  List<OrderEquipment> get _allReadyEquipments =>
+      _order.equipments.where((eq) => eq.status == 'ready').toList();
+
   String? _nextEquipmentStatus(String current) {
     const flow = ['received', 'diagnosing', 'repairing', 'ready', 'delivered'];
     final idx = flow.indexOf(current);
@@ -649,13 +653,38 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               _statusHeader(color, isWide),
               const SizedBox(height: 16),
 
-              // Timeline
-              _timeline(),
-              const SizedBox(height: 16),
+              // Timeline (only for single-device orders)
+              if (_order.equipments.isEmpty) ...[
+                _timeline(),
+                const SizedBox(height: 16),
+              ],
 
               // Equipments grid (full width, above columns)
               if (_order.equipments.isNotEmpty) ...[
                 _equipmentsGrid(),
+                // Delivery button when ALL non-returned equipments are ready
+                if (_allReadyEquipments.isNotEmpty && _tenant != null) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push<bool>(context, MaterialPageRoute(
+                          builder: (_) => DeliveryScreen(order: _order, tenant: _tenant!),
+                        )).then((delivered) {
+                          _refreshOrder();
+                          _loadHistory();
+                          if (delivered == true && mounted) {
+                            context.read<OrdersBloc>().add(OrdersLoadRequested());
+                          }
+                        });
+                      },
+                      icon: const Icon(Icons.draw_rounded),
+                      label: Text('Firmar y Entregar (${_allReadyEquipments.length} equipo${_allReadyEquipments.length > 1 ? 's' : ''})'),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
               ],
 
@@ -1134,12 +1163,56 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
+  // Mini timeline for individual equipment
+  Widget _equipmentTimeline(String status) {
+    final stages = [
+      ('received', '📥'),
+      ('diagnosing', '🔍'),
+      ('repairing', '🔧'),
+      ('ready', '✅'),
+      ('delivered', '🚀'),
+    ];
+    final currentIdx = stages.indexWhere((s) => s.$1 == status);
+
+    return Row(
+      children: stages.asMap().entries.expand((e) {
+        final i = e.key;
+        final (_, icon) = e.value;
+        final isActive = i <= currentIdx;
+        final isCurrent = i == currentIdx;
+        return [
+          Container(
+            width: 28, height: 28,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isActive ? AppTheme.accentCyan.withValues(alpha: 0.15) : Colors.transparent,
+              border: Border.all(
+                color: isActive ? AppTheme.accentCyan : AppTheme.textSecondary.withValues(alpha: 0.2),
+                width: isCurrent ? 2 : 1,
+              ),
+            ),
+            child: Center(child: Text(icon, style: TextStyle(fontSize: 12,
+                color: isActive ? null : AppTheme.textSecondary.withValues(alpha: 0.3)))),
+          ),
+          if (i < stages.length - 1)
+            Expanded(
+              child: Container(
+                height: 2,
+                color: i < currentIdx
+                    ? AppTheme.accentCyan.withValues(alpha: 0.5)
+                    : AppTheme.textSecondary.withValues(alpha: 0.1),
+              ),
+            ),
+        ];
+      }).toList(),
+    );
+  }
+
   // Equipment grid (full width, uniform cards)
   Widget _equipmentsGrid() {
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
-        // 2 columns on wide, 1 on mobile
         final crossCount = w > 700 ? 2 : 1;
         final spacing = 12.0;
         final cardWidth = (w - spacing * (crossCount - 1)) / crossCount;
@@ -1152,6 +1225,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             final eq = entry.value;
             final eqColor = statusColor(eq.status);
             final nextEqStatus = _nextEquipmentStatus(eq.status);
+            // Don't show "delivered" button per-equipment - that's handled by the global delivery button
+            final showNextButton = nextEqStatus != null && nextEqStatus != 'delivered';
 
             return SizedBox(
               width: crossCount == 1 ? w : cardWidth,
@@ -1174,7 +1249,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                           style: TextStyle(color: eqColor, fontSize: 11, fontWeight: FontWeight.w700)),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
+                  // Mini timeline per equipment
+                  _equipmentTimeline(eq.status),
+                  const SizedBox(height: 10),
+                  // Equipment details
                   _infoRow('Tipo', eq.deviceType),
                   _infoRow('Marca', eq.deviceBrand),
                   _infoRow('Modelo', eq.deviceModel),
@@ -1185,32 +1264,18 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   _infoRow('Problema', eq.problemReported),
                   if (eq.diagnosis != null) _infoRow('Diagnostico', eq.diagnosis!),
                   if (eq.warrantyDays > 0) _infoRow('Garantia', '${eq.warrantyDays} dias'),
-                  // Action buttons
-                  if (eq.status != 'delivered') ...[
-                    const SizedBox(height: 10),
-                    Row(children: [
-                      if (nextEqStatus != null)
+                  // Action buttons (no "Firmar y Entregar" here - that's global)
+                  if (eq.status != 'delivered' && eq.status != 'returned' && eq.status != 'ready') ...[
+                    if (showNextButton) ...[
+                      const SizedBox(height: 10),
+                      Row(children: [
                         Expanded(
                           child: SizedBox(
                             height: 34,
                             child: ElevatedButton.icon(
-                              onPressed: () {
-                                if (nextEqStatus == 'delivered' && _tenant != null) {
-                                  Navigator.push<bool>(context, MaterialPageRoute(
-                                    builder: (_) => DeliveryScreen(order: _order, tenant: _tenant!),
-                                  )).then((delivered) {
-                                    _refreshOrder();
-                                    _loadHistory();
-                                    if (delivered == true && mounted) {
-                                      context.read<OrdersBloc>().add(OrdersLoadRequested());
-                                    }
-                                  });
-                                } else {
-                                  _changeEquipmentStatus(eq.id, nextEqStatus);
-                                }
-                              },
-                              icon: Icon(nextEqStatus == 'delivered' ? Icons.draw_rounded : Icons.arrow_forward_rounded, size: 16),
-                              label: Text(nextEqStatus == 'delivered' ? 'Firmar y Entregar' : _nextStatusLabel(nextEqStatus),
+                              onPressed: () => _changeEquipmentStatus(eq.id, nextEqStatus),
+                              icon: Icon(Icons.arrow_forward_rounded, size: 16),
+                              label: Text(_nextStatusLabel(nextEqStatus),
                                   style: TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: eqColor,
@@ -1219,7 +1284,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                             ),
                           ),
                         ),
-                      if (eq.status != 'returned') ...[
                         const SizedBox(width: 8),
                         SizedBox(
                           height: 34,
@@ -1234,9 +1298,47 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                             ),
                           ),
                         ),
-                      ],
-                    ]),
+                      ]),
+                    ] else ...[
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 34,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _returnEquipment(eq),
+                          icon: Icon(Icons.undo_rounded, size: 14),
+                          label: Text('Devolver equipo', style: TextStyle(fontSize: 11)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppTheme.accentRed,
+                            side: BorderSide(color: AppTheme.accentRed.withValues(alpha: 0.5)),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
+                  // Ready state: waiting for global delivery
+                  if (eq.status == 'ready')
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Row(children: [
+                        Icon(Icons.check_circle_rounded, color: AppTheme.accentGreen, size: 16),
+                        const SizedBox(width: 6),
+                        Text('Listo para entrega',
+                            style: TextStyle(color: AppTheme.accentGreen, fontSize: 12, fontWeight: FontWeight.w600)),
+                      ]),
+                    ),
+                  // Delivered state
+                  if (eq.status == 'delivered')
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Row(children: [
+                        Icon(Icons.local_shipping_rounded, color: AppTheme.accentCyan, size: 16),
+                        const SizedBox(width: 6),
+                        Text('Entregado',
+                            style: TextStyle(color: AppTheme.accentCyan, fontSize: 12, fontWeight: FontWeight.w600)),
+                      ]),
+                    ),
+                  // Returned state
                   if (eq.status == 'returned')
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
