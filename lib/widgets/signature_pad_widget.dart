@@ -29,6 +29,7 @@ class _SignaturePadWidgetState extends State<SignaturePadWidget> {
   late final SignatureController _controller;
   bool _hasSigned = false;
   bool _confirmed = false;
+  Uint8List? _fullScreenSignatureImage;
 
   @override
   void initState() {
@@ -64,6 +65,7 @@ class _SignaturePadWidgetState extends State<SignaturePadWidget> {
     setState(() {
       _hasSigned = false;
       _confirmed = false;
+      _fullScreenSignatureImage = null;
     });
     widget.onSigned(null);
   }
@@ -84,6 +86,7 @@ class _SignaturePadWidgetState extends State<SignaturePadWidget> {
       setState(() {
         _confirmed = true;
         _hasSigned = true;
+        _fullScreenSignatureImage = result;
       });
       widget.onSigned(result);
     }
@@ -155,10 +158,11 @@ class _SignaturePadWidgetState extends State<SignaturePadWidget> {
               ),
             ),
           )
-        // Confirmed: show the signature image
+        // Confirmed: show the captured signature
         else if (_confirmed)
           Container(
             width: double.infinity,
+            height: 120,
             decoration: BoxDecoration(
               border: Border.all(color: AppTheme.accentGreen),
               borderRadius: BorderRadius.circular(8),
@@ -166,14 +170,20 @@ class _SignaturePadWidgetState extends State<SignaturePadWidget> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: IgnorePointer(
-                ignoring: true,
-                child: Signature(
-                  controller: _controller,
-                  height: 120,
-                  backgroundColor: Colors.grey.shade50,
-                ),
-              ),
+              child: _fullScreenSignatureImage != null
+                  ? Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Image.memory(_fullScreenSignatureImage!,
+                          fit: BoxFit.contain),
+                    )
+                  : IgnorePointer(
+                      ignoring: true,
+                      child: Signature(
+                        controller: _controller,
+                        height: 120,
+                        backgroundColor: Colors.grey.shade50,
+                      ),
+                    ),
             ),
           )
         // Inline mode (desktop or technician)

@@ -171,9 +171,10 @@ class ServiceOrder {
           ? (json['photos'] as List).map((e) => OrderPhoto.fromJson(e)).toList()
           : [],
       equipments: json['equipments'] != null
-          ? (json['equipments'] as List)
+          ? ((json['equipments'] as List)
               .map((e) => OrderEquipment.fromJson(e))
               .toList()
+            ..sort((a, b) => a.createdAt.compareTo(b.createdAt)))
           : [],
     );
   }
