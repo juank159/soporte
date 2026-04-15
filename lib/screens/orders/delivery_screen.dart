@@ -59,10 +59,12 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
   void initState() {
     super.initState();
     _clientNameCtrl.text = widget.order.customer?.fullName ?? '';
-    _totalCtrl.text = widget.order.total > 0
-        ? formatMoney(widget.order.total)
-        : '';
+    _totalCtrl.text = '';
     _loadTechnicians();
+    // Rebuild when text fields change so _canGenerate updates
+    _totalCtrl.addListener(() => setState(() {}));
+    _warrantyMonthsCtrl.addListener(() => setState(() {}));
+    _clientNameCtrl.addListener(() => setState(() {}));
   }
 
   @override
@@ -137,11 +139,15 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
       final warrantyMonths =
           int.tryParse(_warrantyMonthsCtrl.text.trim()) ?? 1;
 
-      // Save total and warranty on the order
+      // Sum new value to existing total (don't overwrite)
+      final previousTotal = widget.order.total;
+      final newTotal = previousTotal + totalValue;
+      final warrantyDays = _hasWarranty == true ? warrantyMonths * 30 : 0;
+
       try {
         await _api.dio.patch('/orders/${widget.order.id}/delivery-info', data: {
-          'total': totalValue,
-          'warrantyDays': _hasWarranty == true ? warrantyMonths * 30 : 0,
+          'total': newTotal,
+          'warrantyDays': warrantyDays > widget.order.warrantyDays ? warrantyDays : widget.order.warrantyDays,
         });
       } catch (_) {}
 
@@ -161,14 +167,18 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         _statusUpdated = true;
       }
 
-      // Change order status to delivered
-      try {
-        await _api.dio.patch('/orders/${widget.order.id}/status', data: {
-          'status': 'delivered',
-          'notes': deliveryNote,
-        });
-        _statusUpdated = true;
-      } catch (_) {}
+      // Only change order to delivered if ALL active equipments are now delivered
+      final hasActiveNonDelivered = widget.order.equipments.any(
+          (eq) => eq.status != 'ready' && eq.status != 'delivered' && eq.status != 'returned');
+      if (!hasActiveNonDelivered || widget.order.equipments.isEmpty) {
+        try {
+          await _api.dio.patch('/orders/${widget.order.id}/status', data: {
+            'status': 'delivered',
+            'notes': deliveryNote,
+          });
+        } catch (_) {}
+      }
+      _statusUpdated = true;
 
       // Load repair notes from history for the acta
       String fullDiagnosis = widget.order.diagnosis ?? '';
@@ -201,7 +211,11 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         }
       } catch (_) {}
 
-      // Build order copy with the entered values
+      // Build order copy - only include equipments being delivered (ready)
+      final deliveringEquipments = widget.order.equipments
+          .where((eq) => eq.status == 'ready')
+          .toList();
+
       final orderForPdf = ServiceOrder(
         id: widget.order.id,
         orderNumber: widget.order.orderNumber,
@@ -217,10 +231,11 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         laborCost: widget.order.laborCost,
         subtotal: widget.order.subtotal,
         tax: widget.order.tax,
-        total: totalValue,
+        total: totalValue, // This delivery's value, not accumulated
         warrantyDays: _hasWarranty == true ? warrantyMonths * 30 : 0,
         createdAt: widget.order.createdAt,
         items: widget.order.items,
+        equipments: deliveringEquipments,
       );
 
       final clientName = _clientNameCtrl.text.trim();

@@ -1436,18 +1436,35 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Widget _colService() {
     return Column(
       children: [
-        _sectionCard(
-            'Problema', Icons.report_rounded, AppTheme.accentOrange, [
-          Text(_order.problemReported,
-              style:
-                  TextStyle(color: AppTheme.textPrimary, fontSize: 13)),
-        ]),
-        if (_order.diagnosis != null)
-          _sectionCard('Diagnostico', Icons.medical_services_rounded,
-              AppTheme.accentCyan, [
-            Text(_order.diagnosis!,
-                style: TextStyle(
-                    color: AppTheme.textPrimary, fontSize: 13)),
+        // Problem & diagnosis - per equipment or single
+        if (_order.equipments.isEmpty) ...[
+          _sectionCard('Problema', Icons.report_rounded, AppTheme.accentOrange, [
+            Text(_order.problemReported,
+                style: TextStyle(color: AppTheme.textPrimary, fontSize: 13)),
+          ]),
+          if (_order.diagnosis != null)
+            _sectionCard('Diagnostico', Icons.medical_services_rounded, AppTheme.accentCyan, [
+              Text(_order.diagnosis!, style: TextStyle(color: AppTheme.textPrimary, fontSize: 13)),
+            ]),
+        ] else
+          _sectionCard('Problemas reportados', Icons.report_rounded, AppTheme.accentOrange, [
+            ..._order.equipments.asMap().entries.map((e) {
+              final eq = e.value;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${eq.deviceType} ${eq.deviceBrand} ${eq.deviceModel}',
+                      style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 12)),
+                  Text(eq.problemReported,
+                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                  if (eq.diagnosis != null)
+                    Text('Diagnostico: ${eq.diagnosis!}',
+                        style: TextStyle(color: AppTheme.accentCyan, fontSize: 11)),
+                  if (e.key < _order.equipments.length - 1)
+                    Divider(color: AppTheme.dividerColor, height: 12),
+                ]),
+              );
+            }),
           ]),
         if (_order.items.isNotEmpty || _order.total > 0)
           _sectionCard(
