@@ -70,7 +70,7 @@ class PdfGeneratorService {
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.letter,
-        margin: const pw.EdgeInsets.symmetric(horizontal: 50, vertical: 40),
+        margin: const pw.EdgeInsets.symmetric(horizontal: 40, vertical: 30),
         build: (context) => [
           // ========== HEADER ==========
           pw.Center(
@@ -86,14 +86,14 @@ class PdfGeneratorService {
                 pw.Text('Tel: ${tenant.phone}', style: const pw.TextStyle(fontSize: 9)),
             ]),
           ),
-          pw.SizedBox(height: 20),
+          pw.SizedBox(height: 12),
 
           // ========== TITLE ==========
           pw.Center(
             child: pw.Text('ACTA DE ENTREGA DE SERVICIO TECNICO',
-                style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
           ),
-          pw.SizedBox(height: 20),
+          pw.SizedBox(height: 12),
 
           // ========== CLIENT & ORDER DATA (table format) ==========
           pw.Table(
@@ -121,7 +121,7 @@ class PdfGeneratorService {
             style: const pw.TextStyle(fontSize: 11, lineSpacing: 5),
             textAlign: pw.TextAlign.justify,
           ),
-          pw.SizedBox(height: 16),
+          pw.SizedBox(height: 10),
 
           // ========== EQUIPMENT DETAILS ==========
           ...equipmentWidgets,
@@ -200,7 +200,7 @@ class PdfGeneratorService {
               ),
             ),
           ),
-          pw.SizedBox(height: 12),
+          pw.SizedBox(height: 8),
 
           // ========== TERMS ==========
           pw.Text(
@@ -208,7 +208,7 @@ class PdfGeneratorService {
             style: const pw.TextStyle(fontSize: 10, lineSpacing: 5),
             textAlign: pw.TextAlign.justify,
           ),
-          pw.SizedBox(height: 30),
+          pw.SizedBox(height: 20),
 
           // ========== SIGNATURES ==========
           pw.Row(

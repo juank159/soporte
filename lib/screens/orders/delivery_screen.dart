@@ -151,7 +151,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         });
       } catch (_) {}
 
-      // Change each ready equipment to delivered
+      // Change ONLY ready equipment to delivered (backend syncOrderStatus handles order status)
       final deliveryNote = 'Entregado por \$${_totalCtrl.text.trim()} - Garantia: ${_hasWarranty == true ? '$warrantyMonths meses' : 'Sin garantia'}';
       if (widget.order.equipments.isNotEmpty) {
         for (final eq in widget.order.equipments) {
@@ -164,13 +164,8 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
             } catch (_) {}
           }
         }
-        _statusUpdated = true;
-      }
-
-      // Only change order to delivered if ALL active equipments are now delivered
-      final hasActiveNonDelivered = widget.order.equipments.any(
-          (eq) => eq.status != 'ready' && eq.status != 'delivered' && eq.status != 'returned');
-      if (!hasActiveNonDelivered || widget.order.equipments.isEmpty) {
+      } else {
+        // Single device order - change order status directly
         try {
           await _api.dio.patch('/orders/${widget.order.id}/status', data: {
             'status': 'delivered',

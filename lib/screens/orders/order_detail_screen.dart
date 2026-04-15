@@ -259,11 +259,69 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     return null;
   }
 
+  Future<void> _assignTechnicianToEquipment(String equipmentId) async {
+    List<User> techs = [];
+    try {
+      final res = await _api.dio.get('/users');
+      techs = (res.data as List)
+          .map((e) => User.fromJson(e as Map<String, dynamic>))
+          .where((u) => u.role == 'technician' || u.role == 'supervisor')
+          .toList();
+    } catch (_) {}
+
+    if (techs.isEmpty) {
+      if (mounted) _showError('No hay tecnicos registrados');
+      return;
+    }
+
+    final selected = await showDialog<User>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor,
+        title: Text('Asignar tecnico', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: techs.map((t) => ListTile(
+            leading: CircleAvatar(
+              backgroundColor: AppTheme.accentPurple.withValues(alpha: 0.2),
+              child: Text(t.fullName[0], style: TextStyle(color: AppTheme.accentPurple)),
+            ),
+            title: Text(t.fullName, style: TextStyle(color: AppTheme.textPrimary)),
+            subtitle: Text(t.role == 'supervisor' ? 'Supervisor' : 'Tecnico',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+            onTap: () => Navigator.pop(ctx, t),
+          )).toList(),
+        ),
+      ),
+    );
+
+    if (selected == null) return;
+    try {
+      await _api.dio.post('/orders/${_order.id}/equipments/$equipmentId/assign', data: {
+        'technicianId': selected.id,
+      });
+      _refreshOrder();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('${selected.fullName} asignado al equipo'),
+          backgroundColor: AppTheme.accentGreen,
+        ));
+      }
+    } catch (e) {
+      if (mounted) _showError('Error: $e');
+    }
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: AppTheme.accentOrange));
+  }
+
   Future<void> _changeEquipmentStatus(String equipmentId, String newStatus) async {
     // Check technician assignment before diagnosing
     if (newStatus == 'diagnosing') {
       final eq = _order.equipments.where((e) => e.id == equipmentId).firstOrNull;
-      final hasTech = eq?.technicianId != null || _order.technicianId != null;
+      final hasTech = eq?.technicianId != null;
       if (!hasTech) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -1358,11 +1416,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   if (eq.diagnosis != null) _infoRow('Diagnostico', eq.diagnosis!),
                   if (eq.warrantyDays > 0) _infoRow('Garantia', '${eq.warrantyDays} dias'),
                   // Technician assignment for this equipment
-                  if (eq.status == 'received' && eq.technicianId == null && _order.technicianId == null)
+                  if (eq.status == 'received' && eq.technicianId == null)
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: InkWell(
-                        onTap: () => _showAssignTechnicianDialog(),
+                        onTap: () => _assignTechnicianToEquipment(eq.id),
                         child: Row(children: [
                           Icon(Icons.warning_rounded, color: AppTheme.accentOrange, size: 14),
                           const SizedBox(width: 4),
