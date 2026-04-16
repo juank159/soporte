@@ -1688,37 +1688,64 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   // Column 2: Problem + Diagnosis + Costs
-  Widget _colService() {
-    // Parse payment method from history for display
-    String? _lastPaymentMethod;
+  String _extractPaymentMethod(String? notes) {
+    if (notes == null) return '';
+    if (notes.contains('Efectivo')) return 'Efectivo';
+    if (notes.contains('Transferencia')) return 'Transferencia';
+    if (notes.contains('Tarjeta de Credito')) return 'T. Credito';
+    if (notes.contains('Tarjeta de Debito')) return 'T. Debito';
+    return '';
+  }
+
+  /// Get payment method for a specific equipment from history
+  String _getEquipmentPaymentMethod(OrderEquipment eq) {
+    final eqLabel = '${eq.deviceType} ${eq.deviceBrand} ${eq.deviceModel}';
+    // Search history for delivery note matching this equipment
     for (final h in _history.reversed) {
       final notes = h['notes'] as String? ?? '';
-      if (notes.contains('Entregado por')) {
-        if (notes.contains('Efectivo')) _lastPaymentMethod = 'Efectivo';
-        else if (notes.contains('Transferencia')) _lastPaymentMethod = 'Transferencia';
-        else if (notes.contains('Tarjeta de Credito')) _lastPaymentMethod = 'Tarjeta de Credito';
-        else if (notes.contains('Tarjeta de Debito')) _lastPaymentMethod = 'Tarjeta de Debito';
-        break;
+      final toStatus = h['toStatus'] as String? ?? '';
+      if (toStatus != 'delivered') continue;
+      if (!notes.contains('Entregado por')) continue;
+      // Multi-device: notes have [EquipmentLabel] prefix
+      if (notes.contains(eqLabel) || _isSingleDevice) {
+        return _extractPaymentMethod(notes);
       }
     }
+    return '';
+  }
+
+  Widget _colService() {
+    final deliveredEqs = _displayEquipments.where((eq) => eq.status == 'delivered' && eq.laborCost > 0).toList();
 
     return Column(
       children: [
         if (_order.total > 0)
           _sectionCard('Costos', Icons.receipt_long_rounded, AppTheme.accentGreen, [
-            // Per-equipment values
-            ..._displayEquipments.where((eq) => eq.status == 'delivered' && eq.laborCost > 0).map((eq) {
+            // Per-equipment: value + payment method
+            ...deliveredEqs.map((eq) {
+              final method = _getEquipmentPaymentMethod(eq);
               return Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(children: [
-                  Expanded(child: Text('${eq.deviceBrand} ${eq.deviceModel}',
-                      style: TextStyle(color: AppTheme.textPrimary, fontSize: 12))),
-                  Text('\$${formatMoney(eq.laborCost)}',
-                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Expanded(child: Text('${eq.deviceBrand} ${eq.deviceModel}',
+                        style: TextStyle(color: AppTheme.textPrimary, fontSize: 12, fontWeight: FontWeight.w600))),
+                    Text('\$${formatMoney(eq.laborCost)}',
+                        style: TextStyle(color: AppTheme.accentGreen, fontSize: 12, fontWeight: FontWeight.w600)),
+                  ]),
+                  if (method.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Row(children: [
+                        Icon(Icons.payment_rounded, color: AppTheme.textSecondary, size: 12),
+                        const SizedBox(width: 4),
+                        Text(method, style: TextStyle(color: AppTheme.textSecondary, fontSize: 10)),
+                      ]),
+                    ),
                 ]),
               );
             }),
-            if (_displayEquipments.any((eq) => eq.status == 'delivered' && eq.laborCost > 0))
+            if (deliveredEqs.isNotEmpty)
               Divider(color: AppTheme.dividerColor),
             // Items detail
             ..._order.items.map((item) => Padding(
@@ -1739,15 +1766,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     style: const TextStyle(fontWeight: FontWeight.w800, color: AppTheme.accentGreen, fontSize: 16)),
               ],
             ),
-            if (_lastPaymentMethod != null) ...[
-              const SizedBox(height: 6),
-              Row(children: [
-                Icon(Icons.payment_rounded, color: AppTheme.textSecondary, size: 14),
-                const SizedBox(width: 6),
-                Text('Pagado con: $_lastPaymentMethod',
-                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
-              ]),
-            ],
           ]),
       ],
     );
