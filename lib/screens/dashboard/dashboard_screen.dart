@@ -469,19 +469,36 @@ class _DashboardHome extends StatelessWidget {
   }
 
   Widget _buildContent(BuildContext context, List<ServiceOrder> orders) {
+    // Count by individual equipment status when multi-device, else by order status
     final counts = <String, int>{};
     for (final o in orders) {
-      counts[o.status] = (counts[o.status] ?? 0) + 1;
+      if (o.equipments.isNotEmpty) {
+        for (final eq in o.equipments) {
+          counts[eq.status] = (counts[eq.status] ?? 0) + 1;
+        }
+      } else {
+        counts[o.status] = (counts[o.status] ?? 0) + 1;
+      }
     }
 
-    // Count today's orders
+    // Count items (equipment-aware)
     final today = DateTime.now();
-    final todayOrders = orders.where((o) =>
-        o.createdAt.year == today.year &&
-        o.createdAt.month == today.month &&
-        o.createdAt.day == today.day).length;
-    final pendingOrders = orders.where((o) =>
-        o.status != 'delivered' && o.status != 'returned').length;
+    int totalItems = 0;
+    int todayOrders = 0;
+    int pendingOrders = 0;
+    for (final o in orders) {
+      final itemCount = o.equipments.isNotEmpty ? o.equipments.length : 1;
+      totalItems += itemCount;
+      if (o.createdAt.year == today.year && o.createdAt.month == today.month && o.createdAt.day == today.day) {
+        todayOrders += itemCount;
+      }
+      if (o.equipments.isNotEmpty) {
+        pendingOrders += o.equipments.where((eq) =>
+            eq.status != 'delivered' && eq.status != 'returned' && eq.status != 'closed').length;
+      } else if (o.status != 'delivered' && o.status != 'returned' && o.status != 'closed') {
+        pendingOrders++;
+      }
+    }
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -510,7 +527,7 @@ class _DashboardHome extends StatelessWidget {
               ),
               SizedBox(height: 4),
               Text(
-                '$pendingOrders pendientes | $todayOrders hoy | ${orders.length} total',
+                '$pendingOrders pendientes | $todayOrders hoy | $totalItems total',
                 style: TextStyle(
                     color: AppTheme.textSecondary, fontSize: 13),
               ),
