@@ -25,7 +25,9 @@ class PdfGeneratorService {
 
     final deliveryDateFinal = deliveryDate ?? DateTime.now();
     final fechaIngreso = AppDateUtils.formatDate(order.createdAt);
-    final fechaEntrega = AppDateUtils.formatDate(deliveryDateFinal);
+    // deliveryDate is already local time, don't convert again
+    final dl = deliveryDateFinal;
+    final fechaEntrega = '${dl.day.toString().padLeft(2, '0')}/${dl.month.toString().padLeft(2, '0')}/${dl.year}';
     final customer = order.customer;
     final totalStr = _formatMoney(order.total);
     final warrantyMonths = (order.warrantyDays / 30).round();
