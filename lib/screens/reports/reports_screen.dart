@@ -109,7 +109,66 @@ class _ReportsScreenState extends State<ReportsScreen> {
         _stat('Completadas', '$done', AppTheme.accentGreen), SizedBox(width:12),
         _stat('Pendientes', '${total-done}', AppTheme.accentOrange),
       ]),
+      // Payment method breakdown
+      if (_revenue != null && _revenue!['paymentBreakdown'] != null) ...[
+        const SizedBox(height: 14),
+        Text('Ingresos por metodo de pago', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        ...(_revenue!['paymentBreakdown'] as Map<String, dynamic>).entries
+            .where((e) => (e.value as num) > 0)
+            .map((e) {
+          final icon = _paymentIcon(e.key);
+          final color = _paymentColor(e.key);
+          final amount = (e.value as num).toDouble();
+          final pct = rev > 0 ? (amount / rev * 100) : 0.0;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(children: [
+              Icon(icon, color: color, size: 16),
+              const SizedBox(width: 8),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Expanded(child: Text(e.key, style: TextStyle(color: AppTheme.textPrimary, fontSize: 12))),
+                  Text('\$${formatMoney(amount)}', style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 12)),
+                ]),
+                const SizedBox(height: 3),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: LinearProgressIndicator(
+                    value: pct / 100,
+                    minHeight: 4,
+                    backgroundColor: color.withValues(alpha: 0.1),
+                    valueColor: AlwaysStoppedAnimation(color),
+                  ),
+                ),
+              ])),
+              const SizedBox(width: 8),
+              Text('${pct.toStringAsFixed(0)}%', style: TextStyle(color: AppTheme.textSecondary, fontSize: 10)),
+            ]),
+          );
+        }),
+      ],
     ]));
+  }
+
+  IconData _paymentIcon(String method) {
+    switch (method) {
+      case 'Efectivo': return Icons.money_rounded;
+      case 'Transferencia': return Icons.swap_horiz_rounded;
+      case 'Tarjeta de Credito': return Icons.credit_card_rounded;
+      case 'Tarjeta de Debito': return Icons.credit_card_rounded;
+      default: return Icons.help_outline_rounded;
+    }
+  }
+
+  Color _paymentColor(String method) {
+    switch (method) {
+      case 'Efectivo': return AppTheme.accentGreen;
+      case 'Transferencia': return AppTheme.accentBlue;
+      case 'Tarjeta de Credito': return AppTheme.accentPurple;
+      case 'Tarjeta de Debito': return AppTheme.accentCyan;
+      default: return AppTheme.textSecondary;
+    }
   }
 
   Widget _chip(String l, String v) => Padding(padding: EdgeInsets.only(right:6), child: FilterChip(
