@@ -481,15 +481,22 @@ class _DashboardHome extends StatelessWidget {
       }
     }
 
-    // Count items (equipment-aware)
-    final today = DateTime.now();
+    // Count items (equipment-aware, timezone-safe)
+    final now = DateTime.now();
+    // Colombia UTC-5: convert createdAt (UTC) to local by subtracting 5 hours
+    const colOffset = Duration(hours: 5);
+    final todayLocal = DateTime(now.year, now.month, now.day);
+    final tomorrowLocal = todayLocal.add(const Duration(days: 1));
+
     int totalItems = 0;
     int todayOrders = 0;
     int pendingOrders = 0;
     for (final o in orders) {
       final itemCount = o.equipments.isNotEmpty ? o.equipments.length : 1;
       totalItems += itemCount;
-      if (o.createdAt.year == today.year && o.createdAt.month == today.month && o.createdAt.day == today.day) {
+      // Convert UTC createdAt to Colombia time
+      final createdLocal = o.createdAt.subtract(colOffset);
+      if (!createdLocal.isBefore(todayLocal) && createdLocal.isBefore(tomorrowLocal)) {
         todayOrders += itemCount;
       }
       if (o.equipments.isNotEmpty) {
