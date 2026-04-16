@@ -80,10 +80,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Widget _revenueCard() {
-    final rev = (_revenue?['totalRevenue'] ?? _dashboard?['totalRevenue'] ?? 0).toDouble();
+    final rev = (_revenue?['totalRevenue'] ?? 0).toDouble();
     final cnt = _revenue?['ordersCount'] ?? 0;
-    final total = _dashboard?['totalOrders'] ?? 0;
-    final done = _dashboard?['completedCount'] ?? _dashboard?['deliveredCount'] ?? 0;
+    final orders = (_revenue?['orders'] as List?) ?? [];
+    final delivered = orders.where((o) => o['deliveredAt'] != null).length;
+    final pending = cnt - delivered;
     return GlassCard(borderColor: AppTheme.accentGreen.withValues(alpha:0.3), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
         Container(padding: EdgeInsets.all(10), decoration: BoxDecoration(color: AppTheme.accentGreen.withValues(alpha:0.12), borderRadius: BorderRadius.circular(10)),
@@ -93,7 +94,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           Text('Ingresos - $_revenueLabel', style: TextStyle(color: AppTheme.textSecondary, fontSize:12)),
           Text('\$${formatMoney(rev)}', style: TextStyle(fontSize:24, fontWeight:FontWeight.w800, color: AppTheme.accentGreen)),
         ])),
-        if (cnt > 0) Text('$cnt ordenes', style: TextStyle(color: AppTheme.textSecondary, fontSize:11)),
+        Text('$cnt ordenes', style: TextStyle(color: AppTheme.textSecondary, fontSize:11)),
       ]),
       const SizedBox(height:14),
       SizedBox(height: 36, child: ListView(scrollDirection: Axis.horizontal, children: [
@@ -105,9 +106,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
       ])),
       SizedBox(height:12),
       Row(children: [
-        _stat('Total', '$total', AppTheme.accentBlue), SizedBox(width:12),
-        _stat('Completadas', '$done', AppTheme.accentGreen), SizedBox(width:12),
-        _stat('Pendientes', '${total-done}', AppTheme.accentOrange),
+        _stat('Ordenes', '$cnt', AppTheme.accentBlue), SizedBox(width:12),
+        _stat('Entregadas', '$delivered', AppTheme.accentGreen), SizedBox(width:12),
+        _stat('Pendientes', '${pending > 0 ? pending : 0}', AppTheme.accentOrange),
       ]),
       // Payment method breakdown
       if (_revenue != null && _revenue!['paymentBreakdown'] != null) ...[
