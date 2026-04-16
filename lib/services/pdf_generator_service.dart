@@ -105,35 +105,24 @@ class PdfGeneratorService {
               pw.Text('NIT ${tenant.nit}', style: const pw.TextStyle(fontSize: 9)),
           ])),
           pw.SizedBox(height: 6),
-          pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-            pw.Text('ACTA DE ENTREGA DE SERVICIO TECNICO',
-                style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
-            pw.Text(order.orderNumber,
-                style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700)),
-          ]),
+          pw.Center(child: pw.Text('ACTA DE ENTREGA DE SERVICIO TECNICO ${order.orderNumber}',
+              style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold))),
           pw.SizedBox(height: 8),
 
-          // ========== CLIENT DATA (2 rows) ==========
-          pw.Row(children: [
-            pw.Text('FECHA: ', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-            pw.Expanded(child: pw.Text(dateStr, style: const pw.TextStyle(fontSize: 9))),
-            pw.Text('CLIENTE: ', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-            pw.Text(customer?.fullName ?? '-', style: const pw.TextStyle(fontSize: 9)),
-          ]),
-          pw.SizedBox(height: 3),
-          pw.Row(children: [
-            pw.Text('CC/NIT: ', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-            pw.Expanded(child: pw.Text(customer?.idNumber ?? '-', style: const pw.TextStyle(fontSize: 9))),
-            pw.Text('TEL: ', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-            pw.Text(customer?.phone ?? '-', style: const pw.TextStyle(fontSize: 9)),
-          ]),
+          // ========== CLIENT DATA (vertical, left aligned) ==========
+          _clientRow('FECHA', dateStr),
+          _clientRow('CLIENTE', customer?.fullName ?? '-'),
+          _clientRow('CC/NIT', customer?.idNumber ?? '-'),
+          _clientRow('TELEFONO', customer?.phone ?? '-'),
+          if (customer?.email != null && customer!.email!.isNotEmpty)
+            _clientRow('EMAIL', customer.email!),
           pw.Divider(height: 10),
 
           // ========== INTRO ==========
           pw.Text(
             isMulti
-                ? 'Se hace entrega de los siguientes equipos que ingresaron el ${AppDateUtils.formatDate(order.createdAt)}:'
-                : 'Se hace entrega del equipo que ingreso el ${AppDateUtils.formatDate(order.createdAt)}:',
+                ? 'Por medio de la presente acta, se hace entrega de los siguientes equipos que fueron recibidos en nuestras instalaciones para servicio tecnico:'
+                : 'Por medio de la presente acta, se hace entrega del equipo que fue recibido en nuestras instalaciones para servicio tecnico:',
             style: const pw.TextStyle(fontSize: 9),
           ),
           pw.SizedBox(height: 6),
@@ -165,16 +154,21 @@ class PdfGeneratorService {
             ...order.equipments.where((eq) => eq.status == 'ready' || eq.status == 'delivered').map((eq) {
               final m = (eq.warrantyDays / 30).round();
               final hasG = eq.warrantyDays > 0 && m > 0;
-              return pw.Text(
-                '${eq.deviceBrand} ${eq.deviceModel}: ${hasG ? '$m mes(es) de garantia. Cubre exclusivamente la reparacion efectuada.' : 'Garantia instantanea. Se entrega probado y funcionando.'}',
-                style: const pw.TextStyle(fontSize: 8),
+              return pw.Padding(
+                padding: const pw.EdgeInsets.only(bottom: 2),
+                child: pw.RichText(text: pw.TextSpan(style: const pw.TextStyle(fontSize: 8), children: [
+                  pw.TextSpan(text: '${eq.deviceBrand} ${eq.deviceModel}: ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                  pw.TextSpan(text: hasG
+                      ? 'Se otorga garantia de $m mes(es) sobre el trabajo realizado. La garantia cubre exclusivamente la reparacion efectuada y no aplica por danos causados por mal uso, golpes, caidas, humedad, sobrecarga electrica u otras causas ajenas al servicio prestado.'
+                      : 'Garantia instantanea. Se entrega el equipo probado y funcionando a satisfaccion del cliente. No se otorga garantia adicional sobre el trabajo realizado.'),
+                ])),
               );
             })
           else ...[
             pw.Text(
               hasWarranty && warrantyMonths > 0
-                  ? 'Se otorga garantia de $warrantyMonths mes(es). Cubre exclusivamente la reparacion efectuada. No aplica por mal uso, golpes o humedad.'
-                  : 'Garantia instantanea. Se entrega probado y funcionando. Sin garantia adicional.',
+                  ? 'Se otorga garantia de $warrantyMonths mes(es) sobre el trabajo realizado. La garantia cubre exclusivamente la reparacion efectuada y no aplica por danos causados por mal uso, golpes, caidas, humedad, sobrecarga electrica u otras causas ajenas al servicio prestado.'
+                  : 'Garantia instantanea. Se entrega el equipo probado y funcionando a satisfaccion del cliente. No se otorga garantia adicional sobre el trabajo realizado.',
               style: const pw.TextStyle(fontSize: 8),
             ),
           ],
@@ -287,6 +281,16 @@ class PdfGeneratorService {
         ]),
       ),
     ];
+  }
+
+  pw.Widget _clientRow(String label, String value) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 2),
+      child: pw.Row(children: [
+        pw.SizedBox(width: 80, child: pw.Text('$label:', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+        pw.Text(value, style: const pw.TextStyle(fontSize: 9)),
+      ]),
+    );
   }
 
   pw.Widget _boldLabel(String label, String value) {
