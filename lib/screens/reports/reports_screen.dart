@@ -112,8 +112,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
       // Payment method breakdown
       if (_revenue != null && _revenue!['paymentBreakdown'] != null) ...[
         const SizedBox(height: 14),
-        Text('Ingresos por metodo de pago', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+        Divider(color: AppTheme.dividerColor),
         const SizedBox(height: 8),
+        Text('Ingresos por metodo de pago', style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 10),
         ...(_revenue!['paymentBreakdown'] as Map<String, dynamic>).entries
             .where((e) => (e.value as num) > 0)
             .map((e) {
@@ -128,7 +130,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               const SizedBox(width: 8),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
-                  Expanded(child: Text(e.key, style: TextStyle(color: AppTheme.textPrimary, fontSize: 12))),
+                  Expanded(child: Text(_paymentLabel(e.key), style: TextStyle(color: AppTheme.textPrimary, fontSize: 12))),
                   Text('\$${formatMoney(amount)}', style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 12)),
                 ]),
                 const SizedBox(height: 3),
@@ -157,7 +159,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
       case 'Transferencia': return Icons.swap_horiz_rounded;
       case 'Tarjeta de Credito': return Icons.credit_card_rounded;
       case 'Tarjeta de Debito': return Icons.credit_card_rounded;
-      default: return Icons.help_outline_rounded;
+      case 'Sin especificar': return Icons.receipt_long_rounded;
+      default: return Icons.receipt_long_rounded;
     }
   }
 
@@ -167,8 +170,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
       case 'Transferencia': return AppTheme.accentBlue;
       case 'Tarjeta de Credito': return AppTheme.accentPurple;
       case 'Tarjeta de Debito': return AppTheme.accentCyan;
-      default: return AppTheme.textSecondary;
+      case 'Sin especificar': return AppTheme.accentOrange;
+      default: return AppTheme.accentOrange;
     }
+  }
+
+  String _paymentLabel(String method) {
+    if (method == 'Sin especificar') return 'Otros (sin metodo)';
+    return method;
   }
 
   Widget _chip(String l, String v) => Padding(padding: EdgeInsets.only(right:6), child: FilterChip(
