@@ -201,6 +201,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         clientName: clientName,
         technicianSignaturePng: techSig,
         technicianName: techName,
+        history: _history,
       );
 
       // Navigate to a preview screen instead of printing directly

@@ -291,6 +291,13 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         );
       } catch (_) {}
 
+      // Load history for payment method extraction in PDF
+      List<Map<String, dynamic>> historyData = [];
+      try {
+        final histRes = await _api.dio.get('/orders/${widget.order.id}/history');
+        historyData = (histRes.data as List).cast<Map<String, dynamic>>();
+      } catch (_) {}
+
       final pdfBytes = await _pdfService.generateDeliveryAct(
         order: orderForPdf,
         tenant: widget.tenant,
@@ -299,6 +306,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         technicianSignaturePng: _technicianSignature!,
         technicianName: techName,
         paymentMethod: _paymentMethodLabel(_paymentMethod!),
+        history: historyData,
       );
 
       setState(() {
