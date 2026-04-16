@@ -105,36 +105,27 @@ class PdfGeneratorService {
               pw.Text('NIT ${tenant.nit}', style: const pw.TextStyle(fontSize: 9)),
           ])),
           pw.SizedBox(height: 6),
-          pw.Center(child: pw.Text('ACTA DE ENTREGA DE SERVICIO TECNICO',
-              style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold))),
+          pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+            pw.Text('ACTA DE ENTREGA DE SERVICIO TECNICO',
+                style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+            pw.Text(order.orderNumber,
+                style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700)),
+          ]),
           pw.SizedBox(height: 8),
 
-          // ========== CLIENT DATA (compact: 2 columns) ==========
+          // ========== CLIENT DATA (2 rows) ==========
           pw.Row(children: [
-            pw.Expanded(child: pw.Row(children: [
-              pw.Text('FECHA: ', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-              pw.Text(dateStr, style: const pw.TextStyle(fontSize: 9)),
-            ])),
-            pw.Expanded(child: pw.Row(children: [
-              pw.Text('ORDEN: ', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-              pw.Text(order.orderNumber, style: const pw.TextStyle(fontSize: 9)),
-            ])),
-          ]),
-          pw.SizedBox(height: 3),
-          pw.Row(children: [
+            pw.Text('FECHA: ', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+            pw.Expanded(child: pw.Text(dateStr, style: const pw.TextStyle(fontSize: 9))),
             pw.Text('CLIENTE: ', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-            pw.Expanded(child: pw.Text(customer?.fullName ?? '-', style: const pw.TextStyle(fontSize: 9))),
-            pw.Text('CC/NIT: ', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-            pw.Text(customer?.idNumber ?? '-', style: const pw.TextStyle(fontSize: 9)),
+            pw.Text(customer?.fullName ?? '-', style: const pw.TextStyle(fontSize: 9)),
           ]),
           pw.SizedBox(height: 3),
           pw.Row(children: [
+            pw.Text('CC/NIT: ', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+            pw.Expanded(child: pw.Text(customer?.idNumber ?? '-', style: const pw.TextStyle(fontSize: 9))),
             pw.Text('TEL: ', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-            pw.Expanded(child: pw.Text(customer?.phone ?? '-', style: const pw.TextStyle(fontSize: 9))),
-            if (customer?.email != null && customer!.email!.isNotEmpty) ...[
-              pw.Text('EMAIL: ', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-              pw.Text(customer.email!, style: const pw.TextStyle(fontSize: 9)),
-            ],
+            pw.Text(customer?.phone ?? '-', style: const pw.TextStyle(fontSize: 9)),
           ]),
           pw.Divider(height: 10),
 
@@ -166,30 +157,27 @@ class PdfGeneratorService {
           ),
           pw.SizedBox(height: 6),
 
-          // ========== WARRANTY ==========
-          pw.Container(
-            padding: const pw.EdgeInsets.all(6),
-            decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.5, color: PdfColors.grey400), borderRadius: pw.BorderRadius.circular(4)),
-            child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-              pw.Text('GARANTIA', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 2),
-              if (isMulti)
-                ...order.equipments.where((eq) => eq.status == 'ready' || eq.status == 'delivered').map((eq) {
-                  final m = (eq.warrantyDays / 30).round();
-                  return pw.Text(
-                    '${eq.deviceBrand} ${eq.deviceModel}: ${eq.warrantyDays > 0 ? '$m mes(es)' : 'Instantanea'}',
-                    style: const pw.TextStyle(fontSize: 8),
-                  );
-                })
-              else
-                pw.Text(
-                  hasWarranty && warrantyMonths > 0
-                      ? 'Se otorga garantia de $warrantyMonths mes(es). Cubre exclusivamente la reparacion efectuada.'
-                      : 'Garantia instantanea. Se entrega probado y funcionando.',
-                  style: const pw.TextStyle(fontSize: 8),
-                ),
-            ]),
-          ),
+          // ========== WARRANTY (per equipment, no box) ==========
+          pw.SizedBox(height: 4),
+          pw.Text('GARANTIA', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 2),
+          if (order.equipments.isNotEmpty)
+            ...order.equipments.where((eq) => eq.status == 'ready' || eq.status == 'delivered').map((eq) {
+              final m = (eq.warrantyDays / 30).round();
+              final hasG = eq.warrantyDays > 0 && m > 0;
+              return pw.Text(
+                '${eq.deviceBrand} ${eq.deviceModel}: ${hasG ? '$m mes(es) de garantia. Cubre exclusivamente la reparacion efectuada.' : 'Garantia instantanea. Se entrega probado y funcionando.'}',
+                style: const pw.TextStyle(fontSize: 8),
+              );
+            })
+          else ...[
+            pw.Text(
+              hasWarranty && warrantyMonths > 0
+                  ? 'Se otorga garantia de $warrantyMonths mes(es). Cubre exclusivamente la reparacion efectuada. No aplica por mal uso, golpes o humedad.'
+                  : 'Garantia instantanea. Se entrega probado y funcionando. Sin garantia adicional.',
+              style: const pw.TextStyle(fontSize: 8),
+            ),
+          ],
           pw.SizedBox(height: 6),
 
           // ========== TERMS ==========
@@ -259,11 +247,11 @@ class PdfGeneratorService {
             ],
           ),
           pw.SizedBox(height: 4),
-          pw.Text('Falla: ${eq.problemReported}', style: const pw.TextStyle(fontSize: 9)),
+          _boldLabel('Falla reportada:', eq.problemReported),
           if (eq.diagnosis != null && eq.diagnosis!.isNotEmpty)
-            pw.Text('Diagnostico: ${eq.diagnosis!}', style: const pw.TextStyle(fontSize: 9)),
+            _boldLabel('Diagnostico:', eq.diagnosis!),
           if (repairNotes != null)
-            pw.Text('Reparacion: $repairNotes', style: const pw.TextStyle(fontSize: 9)),
+            _boldLabel('Reparacion realizada:', repairNotes),
         ]),
       ),
     ];
@@ -291,14 +279,24 @@ class PdfGeneratorService {
             ],
           ),
           pw.SizedBox(height: 4),
-          pw.Text('Falla: ${order.problemReported}', style: const pw.TextStyle(fontSize: 9)),
+          _boldLabel('Falla reportada:', order.problemReported),
           if (order.diagnosis != null && order.diagnosis!.isNotEmpty)
-            pw.Text('Diagnostico: ${order.diagnosis!}', style: const pw.TextStyle(fontSize: 9)),
+            _boldLabel('Diagnostico:', order.diagnosis!),
           if (order.notes != null && order.notes!.isNotEmpty && !order.notes!.startsWith('Entregado por'))
-            pw.Text('Reparacion: ${order.notes!}', style: const pw.TextStyle(fontSize: 9)),
+            _boldLabel('Reparacion realizada:', order.notes!),
         ]),
       ),
     ];
+  }
+
+  pw.Widget _boldLabel(String label, String value) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 2),
+      child: pw.RichText(text: pw.TextSpan(style: const pw.TextStyle(fontSize: 9), children: [
+        pw.TextSpan(text: '$label ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+        pw.TextSpan(text: value),
+      ])),
+    );
   }
 
   pw.Widget _signatureBlock(pw.Widget? sigWidget, String label, String name) {
