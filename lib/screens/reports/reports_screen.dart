@@ -42,13 +42,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
+    final dateParams = {'startDate': _revFrom, 'endDate': _revTo};
     try {
       final r = await Future.wait([
-        _api.dio.get('/reports/dashboard'),
-        _api.dio.get('/reports/technicians'),
-        _api.dio.get('/reports/repair-time'),
+        _api.dio.get('/reports/dashboard', queryParameters: dateParams),
+        _api.dio.get('/reports/technicians', queryParameters: dateParams),
+        _api.dio.get('/reports/repair-time', queryParameters: dateParams),
         _api.dio.get('/reports/stale-orders'),
-        _api.dio.get('/reports/revenue', queryParameters: {'startDate': _revFrom, 'endDate': _revTo}),
+        _api.dio.get('/reports/revenue', queryParameters: dateParams),
       ]);
       setState(() { _dashboard=r[0].data; _technicians=r[1].data; _repairTime=r[2].data; _staleOrders=r[3].data; _revenue=r[4].data; _loading=false; });
     } catch (_) { setState(() => _loading = false); }
