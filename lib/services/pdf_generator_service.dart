@@ -23,8 +23,9 @@ class PdfGeneratorService {
       author: tenant.name,
     );
 
-    final now = deliveryDate ?? DateTime.now();
-    final dateStr = AppDateUtils.formatDate(now);
+    final deliveryDateFinal = deliveryDate ?? DateTime.now();
+    final fechaIngreso = AppDateUtils.formatDate(order.createdAt);
+    final fechaEntrega = AppDateUtils.formatDate(deliveryDateFinal);
     final customer = order.customer;
     final totalStr = _formatMoney(order.total);
     final warrantyMonths = (order.warrantyDays / 30).round();
@@ -110,7 +111,7 @@ class PdfGeneratorService {
           pw.SizedBox(height: 8),
 
           // ========== CLIENT DATA (vertical, left aligned) ==========
-          _clientRow('FECHA INGRESO', AppDateUtils.formatDate(order.createdAt)),
+          _clientRow('FECHA INGRESO', fechaIngreso),
           _clientRow('CLIENTE', customer?.fullName ?? '-'),
           _clientRow('CC/NIT', customer?.idNumber ?? '-'),
           _clientRow('TELEFONO', customer?.phone ?? '-'),
@@ -121,8 +122,8 @@ class PdfGeneratorService {
           // ========== INTRO ==========
           pw.Text(
             isMulti
-                ? 'Por medio de la presente acta, se hace entrega el dia $dateStr de los siguientes equipos que fueron recibidos en nuestras instalaciones para servicio tecnico:'
-                : 'Por medio de la presente acta, se hace entrega el dia $dateStr del equipo que fue recibido en nuestras instalaciones para servicio tecnico:',
+                ? 'Por medio de la presente acta, se hace entrega el dia $fechaEntrega de los siguientes equipos que fueron recibidos en nuestras instalaciones para servicio tecnico:'
+                : 'Por medio de la presente acta, se hace entrega el dia $fechaEntrega del equipo que fue recibido en nuestras instalaciones para servicio tecnico:',
             style: const pw.TextStyle(fontSize: 9),
           ),
           pw.SizedBox(height: 6),
