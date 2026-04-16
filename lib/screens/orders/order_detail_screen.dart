@@ -975,96 +975,104 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             colors: AppTheme.gradientPrimary,
           ),
         ),
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(isWide ? 24 : 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Status + action bar
-              _statusHeader(color, isWide),
-              const SizedBox(height: 16),
+        child: LayoutBuilder(
+          builder: (context, screenConstraints) {
+            final screenW = screenConstraints.maxWidth;
+            final pad = isWide ? 24.0 : 16.0;
 
-              // Equipment grid (unified for single and multi-device)
-              _equipmentsGrid(),
+            return SingleChildScrollView(
+              padding: EdgeInsets.all(pad),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Status header
+                  _statusHeader(color, isWide),
+                  const SizedBox(height: 16),
 
-              // Global delivery button: when ALL active equipments are ready
-              if (_allActiveReady && _tenant != null) ...[
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push<bool>(context, MaterialPageRoute(
-                        builder: (_) => DeliveryScreen(order: _order, tenant: _tenant!),
-                      )).then((delivered) {
-                        _refreshOrder();
-                        _loadHistory();
-                        if (delivered == true && mounted) {
-                          context.read<OrdersBloc>().add(OrdersLoadRequested());
-                        }
-                      });
-                    },
-                    icon: const Icon(Icons.draw_rounded),
-                    label: Text(_readyEquipments.length > 1
-                        ? 'Firmar y Entregar todos (${_readyEquipments.length} equipos)'
-                        : 'Firmar y Entregar'),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 12),
-
-              // Content - responsive grid
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final w = constraints.maxWidth;
-
-                  if (w > 900) {
-                    // Desktop: 3 columns
-                    return Row(
+                  // ====== RESPONSIVE LAYOUT ======
+                  if (screenW > 900) ...[
+                    // DESKTOP: equipment cards left, info+history right
+                    Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: _colInfo()),
-                        const SizedBox(width: 12),
-                        Expanded(child: _colService()),
-                        const SizedBox(width: 12),
-                        Expanded(child: _colHistory()),
-                      ],
-                    );
-                  }
-
-                  if (w > 600) {
-                    // Tablet: 2 columns
-                    return Column(
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(child: _colInfo()),
-                            const SizedBox(width: 12),
-                            Expanded(child: _colService()),
-                          ],
+                        // Left: equipment cards (takes 60%)
+                        Expanded(
+                          flex: 3,
+                          child: Column(children: [
+                            _equipmentsSection(),
+                            const SizedBox(height: 12),
+                            _colService(),
+                          ]),
                         ),
-                        _colHistory(),
+                        const SizedBox(width: 16),
+                        // Right: client + dates + photos + history (takes 40%)
+                        Expanded(
+                          flex: 2,
+                          child: Column(children: [
+                            _colInfo(),
+                            _historyCard(),
+                          ]),
+                        ),
                       ],
-                    );
-                  }
-
-                  // Mobile: 1 column
-                  return Column(
-                    children: [
-                      _colInfo(),
-                      _colService(),
-                      _colHistory(),
-                    ],
-                  );
-                },
+                    ),
+                  ] else if (screenW > 600) ...[
+                    // TABLET: equipment full width, then 2 columns below
+                    _equipmentsSection(),
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: Column(children: [_colInfo(), _colService()])),
+                        const SizedBox(width: 12),
+                        Expanded(child: _historyCard()),
+                      ],
+                    ),
+                  ] else ...[
+                    // MOBILE: everything stacked
+                    _equipmentsSection(),
+                    const SizedBox(height: 12),
+                    _colInfo(),
+                    _colService(),
+                    _historyCard(),
+                  ],
+                ],
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
+  }
+
+  /// Equipment section with delivery button
+  Widget _equipmentsSection() {
+    return Column(children: [
+      _equipmentsGrid(),
+      if (_allActiveReady && _tenant != null) ...[
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.push<bool>(context, MaterialPageRoute(
+                builder: (_) => DeliveryScreen(order: _order, tenant: _tenant!),
+              )).then((delivered) {
+                _refreshOrder();
+                _loadHistory();
+                if (delivered == true && mounted) {
+                  context.read<OrdersBloc>().add(OrdersLoadRequested());
+                }
+              });
+            },
+            icon: const Icon(Icons.draw_rounded),
+            label: Text(_readyEquipments.length > 1
+                ? 'Firmar y Entregar todos (${_readyEquipments.length} equipos)'
+                : 'Firmar y Entregar'),
+          ),
+        ),
+      ],
+    ]);
   }
 
   Widget _statusHeader(Color color, bool isWide) {
@@ -1468,17 +1476,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   // Equipment grid (full width, uniform cards)
   Widget _equipmentsGrid() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final w = constraints.maxWidth;
-        final crossCount = w > 700 ? 2 : 1;
-        final spacing = 12.0;
-        final cardWidth = (w - spacing * (crossCount - 1)) / crossCount;
-
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: _displayEquipments.asMap().entries.map((entry) {
+    return Column(
+      children: _displayEquipments.asMap().entries.map((entry) {
             final i = entry.key;
             final eq = entry.value;
             final eqColor = statusColor(eq.status);
@@ -1486,9 +1485,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             // Don't show "delivered" button per-equipment - that's handled by the global delivery button
             final showNextButton = nextEqStatus != null && nextEqStatus != 'delivered';
 
-            return SizedBox(
-              width: crossCount == 1 ? w : cardWidth,
-              child: _sectionCard(
+            return _sectionCard(
                 'Equipo ${i + 1}',
                 Icons.devices_rounded,
                 eqColor,
@@ -1685,11 +1682,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       ]),
                     ),
                 ],
-              ),
-            );
+              );
           }).toList(),
-        );
-      },
     );
   }
 
@@ -1760,6 +1754,49 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   // Column 3: History timeline
+  Widget _historyCard() {
+    if (_history.isEmpty) return const SizedBox.shrink();
+    return _sectionCard('Historial', Icons.history_rounded, AppTheme.accentCyan, [
+      ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 350),
+        child: SingleChildScrollView(
+          child: Column(
+            children: _history.map((h) {
+              final toLabel = _statusLabelFor(h['toStatus'] ?? '');
+              final notes = h['notes'] as String?;
+              final userName = h['userName'] as String?;
+              final createdAt = h['createdAt'] != null ? DateTime.tryParse(h['createdAt']) : null;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Column(children: [
+                    Container(
+                      width: 10, height: 10,
+                      decoration: BoxDecoration(
+                        color: AppTheme.accentCyan, shape: BoxShape.circle,
+                        border: Border.all(color: AppTheme.accentCyan.withValues(alpha: 0.3), width: 2),
+                      ),
+                    ),
+                    Container(width: 2, height: 30, color: AppTheme.accentCyan.withValues(alpha: 0.15)),
+                  ]),
+                  const SizedBox(width: 10),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(toLabel, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 12)),
+                    if (notes != null && notes.isNotEmpty)
+                      Text(notes, style: TextStyle(color: AppTheme.textSecondary, fontSize: 11), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    if (createdAt != null)
+                      Text('${AppDateUtils.format(createdAt)}${userName != null ? ' · $userName' : ''}',
+                          style: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.6), fontSize: 10)),
+                  ])),
+                ]),
+              );
+            }).toList(),
+          ),
+        ),
+      ),
+    ]);
+  }
+
   Widget _colHistory() {
     if (_history.isEmpty) return const SizedBox.shrink();
 
