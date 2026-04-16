@@ -244,13 +244,43 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
+  /// Get displayable equipment list (converts single-device to equipment format)
+  List<OrderEquipment> get _displayEquipments {
+    if (_order.equipments.isNotEmpty) return _order.equipments;
+    if (_order.device == null) return [];
+    // Convert single device to OrderEquipment for unified display
+    return [
+      OrderEquipment(
+        id: _order.deviceId ?? _order.id,
+        orderId: _order.id,
+        deviceType: _order.device!.type ?? '-',
+        deviceBrand: _order.device!.brand ?? '-',
+        deviceModel: _order.device!.model ?? '-',
+        deviceSerial: _order.device!.serial,
+        deviceColor: _order.device!.color,
+        accessories: _order.device!.accessories,
+        problemReported: _order.problemReported,
+        status: _order.status,
+        diagnosis: _order.diagnosis,
+        notes: _order.notes,
+        technicianId: _order.technicianId,
+        laborCost: _order.total,
+        warrantyDays: _order.warrantyDays,
+        deliveredAt: _order.deliveredAt,
+        createdAt: _order.createdAt,
+      ),
+    ];
+  }
+
+  bool get _isSingleDevice => _order.equipments.isEmpty;
+
   /// Equipment that are ready to be delivered
   List<OrderEquipment> get _readyEquipments =>
-      _order.equipments.where((eq) => eq.status == 'ready').toList();
+      _displayEquipments.where((eq) => eq.status == 'ready').toList();
 
   /// True when ALL active (non-returned) equipments are ready
   bool get _allActiveReady {
-    final active = _order.equipments.where((eq) => eq.status != 'returned' && eq.status != 'delivered').toList();
+    final active = _displayEquipments.where((eq) => eq.status != 'returned' && eq.status != 'delivered').toList();
     return active.isNotEmpty && active.every((eq) => eq.status == 'ready');
   }
 
@@ -380,16 +410,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
     if (saved != true) return;
     try {
-      // Save diagnosis
-      await _api.dio.patch('/orders/${_order.id}/equipments/${eq.id}/diagnosis', data: {
-        'diagnosis': diagCtrl.text.trim(),
-      });
-      // Save repair notes via status update with notes (keeps current status)
-      if (repairCtrl.text.trim().isNotEmpty) {
-        await _api.dio.patch('/orders/${_order.id}/equipments/${eq.id}/status', data: {
-          'status': eq.status,
-          'notes': repairCtrl.text.trim(),
+      if (_isSingleDevice) {
+        // Single device: use order diagnosis endpoint
+        await _orderService.addDiagnosis(_order.id, diagnosis: diagCtrl.text.trim());
+      } else {
+        // Multi device: use equipment diagnosis endpoint
+        await _api.dio.patch('/orders/${_order.id}/equipments/${eq.id}/diagnosis', data: {
+          'diagnosis': diagCtrl.text.trim(),
         });
+        if (repairCtrl.text.trim().isNotEmpty) {
+          await _api.dio.patch('/orders/${_order.id}/equipments/${eq.id}/status', data: {
+            'status': eq.status,
+            'notes': repairCtrl.text.trim(),
+          });
+        }
       }
       _refreshOrder();
       if (mounted) {
@@ -531,9 +565,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
     if (confirmed != true) return;
     try {
-      await _orderService.updateEquipmentStatus(
-        _order.id, equipmentId, newStatus, notes: notesCtrl.text.trim().isNotEmpty ? notesCtrl.text.trim() : null,
-      );
+      if (_isSingleDevice) {
+        await _orderService.updateStatus(_order.id, newStatus, notes: notesCtrl.text.trim().isNotEmpty ? notesCtrl.text.trim() : null);
+      } else {
+        await _orderService.updateEquipmentStatus(
+          _order.id, equipmentId, newStatus, notes: notesCtrl.text.trim().isNotEmpty ? notesCtrl.text.trim() : null,
+        );
+      }
       _refreshOrder();
       _loadHistory();
     } catch (e) {
@@ -589,9 +627,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
     if (confirmed != true) return;
     try {
-      await _orderService.updateEquipmentStatus(
-        _order.id, eq.id, 'returned', notes: notesCtrl.text.trim(),
-      );
+      if (_isSingleDevice) {
+        await _orderService.updateStatus(_order.id, 'returned', notes: notesCtrl.text.trim());
+      } else {
+        await _orderService.updateEquipmentStatus(
+          _order.id, eq.id, 'returned', notes: notesCtrl.text.trim(),
+        );
+      }
       _refreshOrder();
       _loadHistory();
     } catch (e) {
@@ -942,40 +984,35 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               _statusHeader(color, isWide),
               const SizedBox(height: 16),
 
-              // Timeline (only for single-device orders)
-              if (_order.equipments.isEmpty) ...[
-                _timeline(),
-                const SizedBox(height: 16),
-              ],
+              // Equipment grid (unified for single and multi-device)
+              _equipmentsGrid(),
 
-              // Equipments grid (full width, above columns)
-              if (_order.equipments.isNotEmpty) ...[
-                _equipmentsGrid(),
-                // Global delivery button: only when ALL active equipments are ready
-                if (_allActiveReady && _tenant != null) ...[
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.push<bool>(context, MaterialPageRoute(
-                          builder: (_) => DeliveryScreen(order: _order, tenant: _tenant!),
-                        )).then((delivered) {
-                          _refreshOrder();
-                          _loadHistory();
-                          if (delivered == true && mounted) {
-                            context.read<OrdersBloc>().add(OrdersLoadRequested());
-                          }
-                        });
-                      },
-                      icon: const Icon(Icons.draw_rounded),
-                      label: Text('Firmar y Entregar todos (${_readyEquipments.length} equipos)'),
-                    ),
-                  ),
-                ],
+              // Global delivery button: when ALL active equipments are ready
+              if (_allActiveReady && _tenant != null) ...[
                 const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push<bool>(context, MaterialPageRoute(
+                        builder: (_) => DeliveryScreen(order: _order, tenant: _tenant!),
+                      )).then((delivered) {
+                        _refreshOrder();
+                        _loadHistory();
+                        if (delivered == true && mounted) {
+                          context.read<OrdersBloc>().add(OrdersLoadRequested());
+                        }
+                      });
+                    },
+                    icon: const Icon(Icons.draw_rounded),
+                    label: Text(_readyEquipments.length > 1
+                        ? 'Firmar y Entregar todos (${_readyEquipments.length} equipos)'
+                        : 'Firmar y Entregar'),
+                  ),
+                ),
               ],
+              const SizedBox(height: 12),
 
               // Content - responsive grid
               LayoutBuilder(
@@ -1083,102 +1120,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ],
           ),
 
-          // Assign technician warning (only for single-device orders without technician)
-          if (_order.equipments.isEmpty &&
-              _order.technicianId == null &&
-              _order.status != 'delivered' &&
-              _order.status != 'returned') ...[
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _showAssignTechnicianDialog,
-                icon: const Icon(Icons.engineering_rounded, size: 18),
-                label: const Text('Asignar tecnico'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.accentOrange,
-                  side: const BorderSide(color: AppTheme.accentOrange),
-                ),
-              ),
-            ),
-          ],
-
-          // Return button (only for single-device orders)
-          if (_order.equipments.isEmpty &&
-              _order.status != 'delivered' &&
-              _order.status != 'delivered' &&
-              _order.status != 'returned') ...[
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _showReturnDialog(),
-                icon: const Icon(Icons.undo_rounded, size: 18),
-                label: const Text('Devolver equipo'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.accentRed,
-                  side: BorderSide(color: AppTheme.accentRed),
-                ),
-              ),
-            ),
-          ],
-
-          // Action button (only for single-device orders)
-          if (_order.equipments.isEmpty && _nextStatus != null && _order.status != 'delivered' && _order.status != 'returned') ...[
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: _order.status == 'ready'
-                  ? ElevatedButton.icon(
-                      onPressed: _loading || _tenant == null
-                          ? null
-                          : () async {
-                              final delivered = await Navigator.push<bool>(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => DeliveryScreen(
-                                    order: _order,
-                                    tenant: _tenant!,
-                                  ),
-                                ),
-                              );
-                              await _refreshOrder();
-                              if (delivered == true && mounted) {
-                                context.read<OrdersBloc>().add(OrdersLoadRequested());
-                              }
-                            },
-                      icon: const Icon(Icons.draw_rounded),
-                      label: const Text('Firmar y Entregar'),
-                    )
-                  : OutlinedButton.icon(
-                      onPressed: _loading
-                          ? null
-                          : () {
-                              // Require technician for diagnosis/repair
-                              final next = _nextStatus;
-                              if (next == 'diagnosing' &&
-                                  _order.technicianId == null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        'Asigne un tecnico antes de continuar'),
-                                    backgroundColor: AppTheme.accentOrange,
-                                  ),
-                                );
-                                return;
-                              }
-                              _showChangeStatusDialog();
-                            },
-                      icon: _loading
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2))
-                          : Icon(_nextStatusIcon(_nextStatus!)),
-                      label: Text(_nextStatusLabel(_nextStatus!)),
-                    ),
-            ),
-          ],
+          // All action buttons are now in the equipment grid above
         ],
       ),
     );
@@ -1365,7 +1307,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
-  // Column 1: Client + Device
+  // Column 1: Client + Dates + Photos
   Widget _colInfo() {
     return Column(
       children: [
@@ -1376,35 +1318,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           if (_order.customer?.email != null)
             _infoRow('Email', _order.customer!.email!),
         ]),
-        // Single device (legacy orders without equipments)
-        if (_order.equipments.isEmpty && _order.device != null)
-          _sectionCard('Equipo', Icons.devices_rounded, AppTheme.accentPurple, [
-            _infoRow('Tipo', _order.device?.type ?? '-'),
-            _infoRow('Marca', _order.device?.brand ?? '-'),
-            _infoRow('Modelo', _order.device?.model ?? '-'),
-            if (_order.device?.serial != null)
-              _infoRow('Serial', _order.device!.serial!),
-            if (_order.device?.color != null)
-              _infoRow('Color', _order.device!.color!),
-            if (_order.device?.accessories != null &&
-                _order.device!.accessories!.isNotEmpty)
-              _infoRow('Accesorios', _order.device!.accessories!.join(', ')),
-            if (_order.technicianId != null && _getTechName(_order.technicianId).isNotEmpty)
-              _infoRow('Tecnico', _getTechName(_order.technicianId)),
-          ]),
         _sectionCard('Fechas', Icons.schedule_rounded, AppTheme.textSecondary, [
           _infoRow('Creada', AppDateUtils.format(_order.createdAt)),
           if (_order.deliveredAt != null)
             _infoRow('Entregada', AppDateUtils.format(_order.deliveredAt!)),
-          // Warranty progress for single-device
-          if (_order.warrantyDays > 0 && _order.deliveredAt != null)
-            _warrantyProgress(_order.warrantyDays, _order.deliveredAt!)
-          else if (_order.status == 'delivered' && _order.warrantyDays == 0)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text('Garantia instantanea',
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 11, fontStyle: FontStyle.italic)),
-            ),
         ]),
 
         // Photos
@@ -1561,7 +1478,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         return Wrap(
           spacing: spacing,
           runSpacing: spacing,
-          children: _order.equipments.asMap().entries.map((entry) {
+          children: _displayEquipments.asMap().entries.map((entry) {
             final i = entry.key;
             final eq = entry.value;
             final eqColor = statusColor(eq.status);
@@ -1778,77 +1695,37 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   // Column 2: Problem + Diagnosis + Costs
   Widget _colService() {
+    // Parse payment method from history for display
+    String? _lastPaymentMethod;
+    for (final h in _history.reversed) {
+      final notes = h['notes'] as String? ?? '';
+      if (notes.contains('Entregado por')) {
+        if (notes.contains('Efectivo')) _lastPaymentMethod = 'Efectivo';
+        else if (notes.contains('Transferencia')) _lastPaymentMethod = 'Transferencia';
+        else if (notes.contains('Tarjeta de Credito')) _lastPaymentMethod = 'Tarjeta de Credito';
+        else if (notes.contains('Tarjeta de Debito')) _lastPaymentMethod = 'Tarjeta de Debito';
+        break;
+      }
+    }
+
     return Column(
       children: [
-        // Problem & diagnosis - per equipment or single
-        if (_order.equipments.isEmpty) ...[
-          _sectionCard('Problema', Icons.report_rounded, AppTheme.accentOrange, [
-            Text(_order.problemReported,
-                style: TextStyle(color: AppTheme.textPrimary, fontSize: 13)),
-          ]),
-          if (_order.diagnosis != null && _order.diagnosis!.isNotEmpty)
-            _sectionCard('Reparacion', Icons.build_rounded, AppTheme.accentCyan, [
-              InkWell(
-                onTap: _order.status != 'delivered' ? _editOrderDiagnosis : null,
-                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Expanded(child: Text(_order.diagnosis!, style: TextStyle(color: AppTheme.textPrimary, fontSize: 13))),
-                  if (_order.status != 'delivered')
-                    Icon(Icons.edit_rounded, color: AppTheme.accentCyan.withValues(alpha: 0.5), size: 16),
-                ]),
-              ),
-            ])
-          else if (_order.status != 'received' && _order.status != 'delivered' && _order.equipments.isEmpty)
-            _sectionCard('Reparacion', Icons.build_rounded, AppTheme.accentCyan, [
-              InkWell(
-                onTap: _editOrderDiagnosis,
-                child: Row(children: [
-                  Icon(Icons.add_circle_outline_rounded, color: AppTheme.accentCyan, size: 16),
-                  const SizedBox(width: 6),
-                  Text('Agregar diagnostico/reparacion', style: TextStyle(color: AppTheme.accentCyan, fontSize: 13)),
-                ]),
-              ),
-            ]),
-        ] else
-          _sectionCard('Problemas reportados', Icons.report_rounded, AppTheme.accentOrange, [
-            ..._order.equipments.asMap().entries.map((e) {
-              final eq = e.value;
+        if (_order.total > 0)
+          _sectionCard('Costos', Icons.receipt_long_rounded, AppTheme.accentGreen, [
+            // Per-equipment values
+            ..._displayEquipments.where((eq) => eq.status == 'delivered' && eq.laborCost > 0).map((eq) {
               return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('${eq.deviceType} ${eq.deviceBrand} ${eq.deviceModel}',
-                      style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 12)),
-                  Text(eq.problemReported,
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(children: [
+                  Expanded(child: Text('${eq.deviceBrand} ${eq.deviceModel}',
+                      style: TextStyle(color: AppTheme.textPrimary, fontSize: 12))),
+                  Text('\$${formatMoney(eq.laborCost)}',
                       style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                  if (eq.diagnosis != null)
-                    Text('Diagnostico: ${eq.diagnosis!}',
-                        style: TextStyle(color: AppTheme.accentCyan, fontSize: 11)),
-                  if (e.key < _order.equipments.length - 1)
-                    Divider(color: AppTheme.dividerColor, height: 12),
                 ]),
               );
             }),
-          ]),
-        if (_order.items.isNotEmpty || _order.total > 0)
-          _sectionCard(
-              'Costos', Icons.receipt_long_rounded, AppTheme.accentGreen, [
-            // Per-equipment delivery values (from history notes)
-            if (_order.equipments.isNotEmpty) ...[
-              ..._order.equipments.where((eq) => eq.status == 'delivered' && eq.notes != null).map((eq) {
-                final match = RegExp(r'Entregado por \$([0-9.,]+)').firstMatch(eq.notes!);
-                final valueStr = match?.group(1) ?? '';
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Row(children: [
-                    Expanded(child: Text('${eq.deviceBrand} ${eq.deviceModel}',
-                        style: TextStyle(color: AppTheme.textPrimary, fontSize: 12))),
-                    Text(valueStr.isNotEmpty ? '\$$valueStr' : '-',
-                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                  ]),
-                );
-              }),
-              if (_order.equipments.any((eq) => eq.status == 'delivered'))
-                Divider(color: AppTheme.dividerColor),
-            ],
+            if (_displayEquipments.any((eq) => eq.status == 'delivered' && eq.laborCost > 0))
+              Divider(color: AppTheme.dividerColor),
             // Items detail
             ..._order.items.map((item) => Padding(
                   padding: EdgeInsets.only(bottom: 4),
@@ -1859,9 +1736,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
                   ]),
                 )),
-            if (_order.laborCost > 0)
-              _infoRow('Mano de obra', '\$${formatMoney(_order.laborCost)}'),
-            if (_order.items.isNotEmpty) Divider(color: AppTheme.dividerColor),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -1871,11 +1745,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     style: const TextStyle(fontWeight: FontWeight.w800, color: AppTheme.accentGreen, fontSize: 16)),
               ],
             ),
-            if (_order.warrantyDays > 0)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: _infoRow('Garantia', '${(_order.warrantyDays / 30).round()} mes(es)'),
-              ),
+            if (_lastPaymentMethod != null) ...[
+              const SizedBox(height: 6),
+              Row(children: [
+                Icon(Icons.payment_rounded, color: AppTheme.textSecondary, size: 14),
+                const SizedBox(width: 6),
+                Text('Pagado con: $_lastPaymentMethod',
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+              ]),
+            ],
           ]),
       ],
     );
