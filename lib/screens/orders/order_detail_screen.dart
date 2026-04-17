@@ -172,6 +172,18 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         equipments: actaEquipments,
       );
 
+      // Extract payment method from history for the acta
+      String? reprintPayment;
+      for (final h in _history.reversed) {
+        final notes = h['notes'] as String? ?? '';
+        if (notes.contains('Entregado por')) {
+          if (notes.contains('Efectivo')) { reprintPayment = 'Efectivo'; break; }
+          if (notes.contains('Transferencia')) { reprintPayment = 'Transferencia'; break; }
+          if (notes.contains('Tarjeta de Credito')) { reprintPayment = 'Tarjeta de Credito'; break; }
+          if (notes.contains('Tarjeta de Debito')) { reprintPayment = 'Tarjeta de Debito'; break; }
+        }
+      }
+
       final pdfBytes = await _pdfGenerator.generateDeliveryAct(
         order: orderForPdf,
         tenant: _tenant!,
@@ -179,6 +191,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         clientName: clientName,
         technicianSignaturePng: techSig,
         technicianName: techName,
+        paymentMethod: reprintPayment,
         history: _history,
       );
 

@@ -107,10 +107,10 @@ class PdfGeneratorService {
             if (tenant.nit != null && tenant.nit!.isNotEmpty)
               pw.Text('NIT ${tenant.nit}', style: const pw.TextStyle(fontSize: 9)),
           ])),
-          pw.SizedBox(height: 6),
+          pw.SizedBox(height: 12),
           pw.Center(child: pw.Text('ACTA DE ENTREGA DE SERVICIO TECNICO ${order.orderNumber}',
-              style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold))),
-          pw.SizedBox(height: 8),
+              style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold))),
+          pw.SizedBox(height: 12),
 
           // ========== CLIENT DATA (vertical, left aligned) ==========
           _clientRow('FECHA INGRESO', fechaIngreso),
