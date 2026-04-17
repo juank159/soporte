@@ -184,37 +184,6 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
       }
       _statusUpdated = true;
 
-      // Load repair notes from history for the acta
-      String fullDiagnosis = widget.order.diagnosis ?? '';
-      try {
-        final histRes = await _api.dio.get('/orders/${widget.order.id}/history');
-        final history = histRes.data as List;
-        // Only include actual repair work notes, exclude automatic/system notes
-        final excludePatterns = [
-          'control de calidad', 'enviado a control', 'listo para entrega',
-          'orden cerrada', 'orden creada',
-        ];
-        final repairNotes = history
-            .where((h) {
-              final status = h['toStatus'] as String? ?? '';
-              final notes = (h['notes'] as String? ?? '').toLowerCase();
-              if (status != 'repairing') return false;
-              if (notes.isEmpty) return false;
-              for (final p in excludePatterns) {
-                if (notes.contains(p)) return false;
-              }
-              return true;
-            })
-            .map((h) => h['notes'] as String)
-            .toList();
-        if (repairNotes.isNotEmpty) {
-          if (fullDiagnosis.isNotEmpty && !fullDiagnosis.endsWith('.')) {
-            fullDiagnosis += '.';
-          }
-          fullDiagnosis = '$fullDiagnosis ${repairNotes.join('. ')}.'.trim();
-        }
-      } catch (_) {}
-
       // Track IDs of equipment we just delivered
       final deliveredIds = readyEquipments.map((eq) => eq.id).toSet();
 
@@ -241,7 +210,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         technicianId: widget.order.technicianId,
         status: 'delivered',
         problemReported: widget.order.problemReported,
-        diagnosis: fullDiagnosis.isNotEmpty ? fullDiagnosis : null,
+        diagnosis: sourceOrder.diagnosis,
         notes: widget.order.notes,
         laborCost: widget.order.laborCost,
         subtotal: widget.order.subtotal,

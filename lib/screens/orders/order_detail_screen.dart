@@ -138,30 +138,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         }
       }
 
-      // Build full diagnosis with repair notes from history
-      String fullDiagnosis = _order.diagnosis ?? '';
-      try {
-        final histRes = await _api.dio.get('/orders/${_order.id}/history');
-        final hist = histRes.data as List;
-        final excludes = ['control de calidad', 'enviado a control', 'listo para entrega', 'orden cerrada', 'orden creada', 'entregado por'];
-        final repairNotes = hist
-            .where((h) {
-              final status = h['toStatus'] as String? ?? '';
-              final notes = (h['notes'] as String? ?? '').toLowerCase();
-              if (status != 'repairing' && status != 'diagnosing') return false;
-              if (notes.isEmpty) return false;
-              for (final p in excludes) { if (notes.contains(p)) return false; }
-              return true;
-            })
-            .map((h) => h['notes'] as String)
-            .toList();
-        if (repairNotes.isNotEmpty) {
-          if (fullDiagnosis.isNotEmpty && !fullDiagnosis.endsWith('.')) {
-            fullDiagnosis += '.';
-          }
-          fullDiagnosis = '$fullDiagnosis ${repairNotes.join('. ')}.'.trim();
-        }
-      } catch (_) {}
+      // Use diagnosis and notes directly from the order (not from history)
+      // They already have the final edited text
 
       // Filter equipments for the acta
       List<OrderEquipment> actaEquipments;
@@ -181,7 +159,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         technicianId: _order.technicianId,
         status: _order.status,
         problemReported: _order.problemReported,
-        diagnosis: fullDiagnosis.isNotEmpty ? fullDiagnosis : null,
+        diagnosis: _order.diagnosis,
         notes: _order.notes,
         laborCost: _order.laborCost,
         subtotal: _order.subtotal,
