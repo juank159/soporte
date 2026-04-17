@@ -23,11 +23,16 @@ class PdfGeneratorService {
       author: tenant.name,
     );
 
-    final deliveryDateFinal = deliveryDate ?? DateTime.now();
     final fechaIngreso = AppDateUtils.formatDate(order.createdAt);
-    // deliveryDate is already local time, don't convert again
-    final dl = deliveryDateFinal;
-    final fechaEntrega = '${dl.day.toString().padLeft(2, '0')}/${dl.month.toString().padLeft(2, '0')}/${dl.year}';
+    // deliveryDate from DB is UTC → use AppDateUtils to convert to Colombia
+    // No deliveryDate → use current local date formatted directly
+    String fechaEntrega;
+    if (deliveryDate != null) {
+      fechaEntrega = AppDateUtils.formatDate(deliveryDate);
+    } else {
+      final now = DateTime.now();
+      fechaEntrega = '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
+    }
     final customer = order.customer;
     final totalStr = _formatMoney(order.total);
     final warrantyMonths = (order.warrantyDays / 30).round();

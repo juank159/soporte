@@ -191,6 +191,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         clientName: clientName,
         technicianSignaturePng: techSig,
         technicianName: techName,
+        deliveryDate: _order.deliveredAt,
         paymentMethod: reprintPayment,
         history: _history,
       );
