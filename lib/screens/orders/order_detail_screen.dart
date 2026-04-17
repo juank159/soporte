@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:dio/dio.dart' as dio;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/orders/orders_bloc.dart';
 import '../../config/theme.dart';
@@ -1316,7 +1317,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         _sectionCard('Cliente', Icons.person_rounded, AppTheme.accentBlue, [
           _infoRow('Nombre', _order.customer?.fullName ?? '-'),
           _infoRow('Cedula', _order.customer?.idNumber ?? '-'),
-          _infoRow('Telefono', _order.customer?.phone ?? '-'),
+          _copyableRow('Telefono', _order.customer?.phone ?? '-'),
           if (_order.customer?.email != null)
             _infoRow('Email', _order.customer!.email!),
         ]),
@@ -1925,6 +1926,37 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           SizedBox(height: 10),
           ...children,
         ],
+      ),
+    );
+  }
+
+  Widget _copyableRow(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 2),
+      child: InkWell(
+        onTap: () {
+          Clipboard.setData(ClipboardData(text: value));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('$label copiado: $value'),
+            backgroundColor: AppTheme.accentGreen,
+            duration: const Duration(seconds: 2),
+          ));
+        },
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+            SizedBox(width: 12),
+            Flexible(
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Text(value, style: TextStyle(color: AppTheme.textPrimary, fontSize: 12), textAlign: TextAlign.end),
+                const SizedBox(width: 4),
+                Icon(Icons.copy_rounded, size: 12, color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+              ]),
+            ),
+          ],
+        ),
       ),
     );
   }
