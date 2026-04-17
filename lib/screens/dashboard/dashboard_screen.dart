@@ -367,8 +367,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                   children: [
                     NavigationRail(
                       selectedIndex: _currentIndex,
-                      onDestinationSelected: (i) =>
-                          setState(() => _currentIndex = i),
+                      onDestinationSelected: (i) {
+                        setState(() => _currentIndex = i);
+                        if (i == 0) context.read<OrdersBloc>().add(OrdersLoadRequested());
+                      },
                       labelType: NavigationRailLabelType.all,
                       leading: Padding(
                         padding: EdgeInsets.only(bottom: 16, top: 8),
@@ -412,8 +414,10 @@ class _DashboardScreenState extends State<DashboardScreen>
       bottomNavigationBar: !isWide
           ? NavigationBar(
               selectedIndex: _currentIndex,
-              onDestinationSelected: (i) =>
-                  setState(() => _currentIndex = i),
+              onDestinationSelected: (i) {
+                setState(() => _currentIndex = i);
+                if (i == 0) context.read<OrdersBloc>().add(OrdersLoadRequested());
+              },
               destinations: _navBarDests,
             )
           : null,

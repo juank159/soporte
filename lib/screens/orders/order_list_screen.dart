@@ -361,27 +361,41 @@ class _OrderListScreenState extends State<OrderListScreen> {
           ),
         ),
 
-        // Active filters indicator
+        // Active filters banner
         if (_statusFilter != null || _dateLabel != 'Todas')
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.accentCyan.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppTheme.accentCyan.withValues(alpha: 0.3)),
+            ),
             child: Row(
               children: [
-                Icon(Icons.filter_list_rounded,
-                    size: 14, color: AppTheme.accentCyan),
-                SizedBox(width: 6),
-                Text(_activeFiltersLabel,
-                    style: TextStyle(
-                        color: AppTheme.accentCyan, fontSize: 12)),
-                Spacer(),
-                GestureDetector(
+                Icon(Icons.filter_list_rounded, size: 16, color: AppTheme.accentCyan),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Filtro: $_activeFiltersLabel',
+                      style: TextStyle(color: AppTheme.accentCyan, fontSize: 12, fontWeight: FontWeight.w600)),
+                ),
+                InkWell(
                   onTap: () {
                     _setDateFilter('Todas', null, null);
                     _onFilterChanged(null);
                   },
-                  child: Text('Limpiar',
-                      style: TextStyle(
-                          color: AppTheme.textSecondary, fontSize: 11)),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentRed.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.close_rounded, size: 14, color: AppTheme.accentRed),
+                      const SizedBox(width: 4),
+                      Text('Limpiar', style: TextStyle(color: AppTheme.accentRed, fontSize: 11, fontWeight: FontWeight.w600)),
+                    ]),
+                  ),
                 ),
               ],
             ),
