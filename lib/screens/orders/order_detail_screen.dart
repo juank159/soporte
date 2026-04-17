@@ -488,8 +488,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Future<void> _changeEquipmentStatus(String equipmentId, String newStatus) async {
     // Check technician assignment before diagnosing
     if (newStatus == 'diagnosing') {
-      final eq = _order.equipments.where((e) => e.id == equipmentId).firstOrNull;
-      final hasTech = eq?.technicianId != null;
+      final eq = _displayEquipments.where((e) => e.id == equipmentId).firstOrNull;
+      final hasTech = eq?.technicianId != null || _order.technicianId != null;
       if (!hasTech) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(

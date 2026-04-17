@@ -987,28 +987,29 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         ]),
       ),
 
-      // Technician selector
-      GlassCard(
-        borderColor: AppTheme.accentPurple.withValues(alpha: 0.3),
-        padding: const EdgeInsets.all(12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Icon(Icons.engineering_rounded, color: AppTheme.accentPurple, size: 18),
-            SizedBox(width: 8),
-            Text('Asignar tecnico (opcional)',
-                style: TextStyle(color: AppTheme.accentPurple, fontWeight: FontWeight.w700, fontSize: 14)),
-          ]),
-          const SizedBox(height: 10),
-          if (_technicians.isEmpty)
-            Text('No hay tecnicos registrados',
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12))
-          else
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              ChoiceChip(
-                label: Text('Sin asignar'),
-                selected: _selectedTechnicianId == null,
-                onSelected: (_) => setState(() => _selectedTechnicianId = null),
-              ),
+      // Technician selector (only for single device)
+      if (_devices.length <= 1)
+        GlassCard(
+          borderColor: AppTheme.accentPurple.withValues(alpha: 0.3),
+          padding: const EdgeInsets.all(12),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Icon(Icons.engineering_rounded, color: AppTheme.accentPurple, size: 18),
+              SizedBox(width: 8),
+              Text('Asignar tecnico (opcional)',
+                  style: TextStyle(color: AppTheme.accentPurple, fontWeight: FontWeight.w700, fontSize: 14)),
+            ]),
+            const SizedBox(height: 10),
+            if (_technicians.isEmpty)
+              Text('No hay tecnicos registrados',
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12))
+            else
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                ChoiceChip(
+                  label: Text('Sin asignar'),
+                  selected: _selectedTechnicianId == null,
+                  onSelected: (_) => setState(() => _selectedTechnicianId = null),
+                ),
               ..._technicians.map((t) {
                 final selected = _selectedTechnicianId == t['id'];
                 return ChoiceChip(
@@ -1023,9 +1024,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                   onSelected: (_) => setState(() => _selectedTechnicianId = t['id'] as String),
                 );
               }),
-            ]),
-        ]),
-      ),
+              ]),
+          ]),
+        ),
 
       if (_devices.length > 1)
         Padding(
@@ -1035,7 +1036,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                'Se creara 1 orden con ${_devices.length} equipos. Cada equipo tendra diagnostico y reparacion independiente.',
+                'Se creara 1 orden con ${_devices.length} equipos. Cada equipo tendra diagnostico, reparacion y tecnico independiente. Podra asignar tecnico a cada equipo desde el detalle de la orden.',
                 style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
               ),
             ),
