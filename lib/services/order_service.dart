@@ -5,25 +5,42 @@ import '../models/service_order.dart';
 import '../blocs/orders/orders_bloc.dart';
 import 'api_service.dart';
 
+class OrdersPage {
+  final List<ServiceOrder> orders;
+  final int total;
+  final int page;
+  final int totalPages;
+  OrdersPage({required this.orders, required this.total, required this.page, required this.totalPages});
+}
+
 class OrderService {
   final ApiService _api = ApiService();
 
-  Future<List<ServiceOrder>> getOrders({
+  Future<OrdersPage> getOrders({
     String? status,
     String? search,
     String? dateFrom,
     String? dateTo,
+    int page = 1,
+    int limit = 20,
   }) async {
-    final params = <String, dynamic>{};
+    final params = <String, dynamic>{
+      'page': page,
+      'limit': limit,
+    };
     if (status != null) params['status'] = status;
     if (search != null && search.isNotEmpty) params['search'] = search;
     if (dateFrom != null) params['dateFrom'] = dateFrom;
     if (dateTo != null) params['dateTo'] = dateTo;
 
     final response = await _api.dio.get('/orders', queryParameters: params);
-    return (response.data as List)
-        .map((e) => ServiceOrder.fromJson(e))
-        .toList();
+    final json = response.data as Map<String, dynamic>;
+    return OrdersPage(
+      orders: (json['data'] as List).map((e) => ServiceOrder.fromJson(e)).toList(),
+      total: json['total'] ?? 0,
+      page: json['page'] ?? 1,
+      totalPages: json['totalPages'] ?? 1,
+    );
   }
 
   Future<ServiceOrder> getOrder(String id) async {

@@ -17,10 +17,12 @@ class OrdersLoadRequested extends OrdersEvent {
   final String? search;
   final String? dateFrom;
   final String? dateTo;
-  OrdersLoadRequested({this.statusFilter, this.search, this.dateFrom, this.dateTo});
+  final int page;
+  final bool loadMore; // true = append to existing list
+  OrdersLoadRequested({this.statusFilter, this.search, this.dateFrom, this.dateTo, this.page = 1, this.loadMore = false});
 
   @override
-  List<Object?> get props => [statusFilter, search, dateFrom, dateTo];
+  List<Object?> get props => [statusFilter, search, dateFrom, dateTo, page, loadMore];
 }
 
 /// Data for a single equipment in a multi-device order
@@ -90,10 +92,14 @@ class OrdersLoading extends OrdersState {}
 
 class OrdersLoaded extends OrdersState {
   final List<ServiceOrder> orders;
-  OrdersLoaded(this.orders);
+  final int total;
+  final int page;
+  final int totalPages;
+  final bool hasMore;
+  OrdersLoaded(this.orders, {this.total = 0, this.page = 1, this.totalPages = 1, this.hasMore = false});
 
   @override
-  List<Object?> get props => [orders.length];
+  List<Object?> get props => [orders.length, page];
 }
 
 class OrderCreated extends OrdersState {
@@ -126,14 +132,29 @@ class OrdersBloc extends Bloc<OrdersEvent, OrdersState> {
     OrdersLoadRequested event,
     Emitter<OrdersState> emit,
   ) async {
-    emit(OrdersLoading());
+    // Only show full loading spinner on first page
+    if (!event.loadMore) emit(OrdersLoading());
     try {
-      final orders = await _orderService.getOrders(
-          status: event.statusFilter,
-          search: event.search,
-          dateFrom: event.dateFrom,
-          dateTo: event.dateTo);
-      emit(OrdersLoaded(orders));
+      final result = await _orderService.getOrders(
+        status: event.statusFilter,
+        search: event.search,
+        dateFrom: event.dateFrom,
+        dateTo: event.dateTo,
+        page: event.page,
+      );
+      List<ServiceOrder> allOrders;
+      if (event.loadMore && state is OrdersLoaded) {
+        allOrders = [...(state as OrdersLoaded).orders, ...result.orders];
+      } else {
+        allOrders = result.orders;
+      }
+      emit(OrdersLoaded(
+        allOrders,
+        total: result.total,
+        page: result.page,
+        totalPages: result.totalPages,
+        hasMore: result.page < result.totalPages,
+      ));
     } catch (e) {
       debugPrint('LOAD ORDERS ERROR: $e');
       emit(OrdersError('Error al cargar ordenes: $e'));

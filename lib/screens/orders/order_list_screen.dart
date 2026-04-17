@@ -48,6 +48,17 @@ class _OrderListScreenState extends State<OrderListScreen> {
         ));
   }
 
+  void _loadMore(int nextPage) {
+    context.read<OrdersBloc>().add(OrdersLoadRequested(
+          statusFilter: _statusFilter,
+          search: _searchCtrl.text.trim(),
+          dateFrom: _dateFrom,
+          dateTo: _dateTo,
+          page: nextPage,
+          loadMore: true,
+        ));
+  }
+
   void _onSearchChanged(String query) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 400), _loadOrders);
@@ -441,7 +452,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                       child: Row(
                         children: [
                           Text(
-                            '${state.orders.length} ordenes',
+                            '${state.orders.length} de ${state.total} ordenes',
                             style: TextStyle(
                                 color: AppTheme.textSecondary, fontSize: 12),
                           ),
@@ -474,8 +485,21 @@ class _OrderListScreenState extends State<OrderListScreen> {
                   onRefresh: () async => _loadOrders(),
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: state.orders.length,
+                    itemCount: state.orders.length + (state.hasMore ? 1 : 0),
                     itemBuilder: (context, i) {
+                      // Load more button at the end
+                      if (i == state.orders.length) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: Center(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _loadMore(state.page + 1),
+                              icon: const Icon(Icons.expand_more_rounded),
+                              label: Text('Cargar mas (${state.orders.length} de ${state.total})'),
+                            ),
+                          ),
+                        );
+                      }
                       final order = state.orders[i];
                       final color = statusColor(order.status);
                       return GestureDetector(
