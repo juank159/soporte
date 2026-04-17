@@ -345,9 +345,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
     if (selected == null) return;
     try {
-      await _api.dio.post('/orders/${_order.id}/equipments/$equipmentId/assign', data: {
-        'technicianId': selected.id,
-      });
+      if (_isSingleDevice) {
+        await _api.dio.post('/orders/${_order.id}/assign', data: {
+          'technicianId': selected.id,
+        });
+      } else {
+        await _api.dio.post('/orders/${_order.id}/equipments/$equipmentId/assign', data: {
+          'technicianId': selected.id,
+        });
+      }
       _refreshOrder();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
