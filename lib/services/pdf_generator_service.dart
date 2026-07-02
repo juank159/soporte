@@ -91,7 +91,7 @@ class PdfGeneratorService {
                   style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
             ]),
             if (eqPayment.isNotEmpty)
-              pw.Text('Pago: $eqPayment  |  Garantia: $eqWarrantyText',
+              pw.Text('Metodo de pago: $eqPayment  |  Garantia: $eqWarrantyText',
                   style: const pw.TextStyle(fontSize: 8)),
           ]),
         ));
@@ -100,7 +100,7 @@ class PdfGeneratorService {
       costRows.add(pw.Padding(
         padding: const pw.EdgeInsets.only(bottom: 3),
         child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-          pw.Text('Pago:', style: const pw.TextStyle(fontSize: 9)),
+          pw.Text('Metodo de pago:', style: const pw.TextStyle(fontSize: 9)),
           pw.Text(paymentMethod, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
         ]),
       ));
@@ -274,7 +274,7 @@ class PdfGeneratorService {
               if (eq.deviceSerial != null) _tableRow('Serial', eq.deviceSerial!),
               if (eq.deviceColor != null) _tableRow('Color', eq.deviceColor!),
               if (eq.accessories != null && eq.accessories!.isNotEmpty) _tableRow('Accesorios', eq.accessories!.join(', ')),
-              if (payment != null) _tableRow('Metodo pago', payment),
+              if (payment != null) _tableRow('Metodo de pago', payment),
               if (warrantyText != null) _tableRow('Garantia', warrantyText),
             ],
           ),
@@ -343,7 +343,12 @@ class PdfGeneratorService {
 
   pw.Widget _signatureBlock(pw.Widget? sigWidget, String label, String name) {
     return pw.SizedBox(width: 200, child: pw.Column(children: [
-      if (sigWidget != null) sigWidget,
+      pw.SizedBox(
+        height: 45,
+        child: sigWidget != null
+            ? pw.Align(alignment: pw.Alignment.bottomCenter, child: sigWidget)
+            : pw.SizedBox(),
+      ),
       pw.Container(decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: 1))), width: 200),
       pw.SizedBox(height: 3),
       pw.Text(label, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),

@@ -4,6 +4,7 @@ import 'package:dio/dio.dart' as dio;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/orders/orders_bloc.dart';
 import '../../config/theme.dart';
 import '../../config/format_utils.dart';
@@ -59,10 +60,122 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     if (action == 'print_ticket') {
       _reprintTicket();
     } else if (action == 'print_acta_all') {
-      _reprintActa(null); // All delivered
+      _reprintActa(null);
     } else if (action.startsWith('print_acta_eq_')) {
       final eqId = action.replaceFirst('print_acta_eq_', '');
       _reprintActa(eqId);
+    } else if (action == 'delete_order') {
+      _confirmDeleteOrder();
+    }
+  }
+
+  Future<void> _confirmDeleteOrder() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.accentRed.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.delete_forever_rounded, color: AppTheme.accentRed, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text('Eliminar orden', style: TextStyle(color: AppTheme.accentRed, fontSize: 16, fontWeight: FontWeight.w700)),
+          ),
+        ]),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.accentOrange.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppTheme.accentOrange.withValues(alpha: 0.3)),
+            ),
+            child: Row(children: [
+              Icon(Icons.info_rounded, color: AppTheme.accentOrange, size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'La orden quedara oculta del sistema. El historial y datos se conservan en la base de datos.',
+                  style: TextStyle(color: AppTheme.accentOrange, fontSize: 12),
+                ),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 16),
+          Text('Esta seguro de eliminar la siguiente orden?',
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppTheme.accentRed.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppTheme.accentRed.withValues(alpha: 0.25)),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(_order.orderNumber,
+                  style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontSize: 15)),
+              const SizedBox(height: 2),
+              Text(_order.customer?.fullName ?? '-',
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+              Text(_order.statusLabel,
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+            ]),
+          ),
+        ]),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancelar', style: TextStyle(color: AppTheme.textSecondary)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.delete_rounded, size: 16),
+            label: const Text('Si, eliminar'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.accentRed,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _api.dio.delete('/orders/${_order.id}');
+      if (mounted) {
+        context.read<OrdersBloc>().add(OrdersLoadRequested());
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Row(children: [
+            Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Text('Orden ${_order.orderNumber} eliminada'),
+          ]),
+          backgroundColor: AppTheme.accentGreen,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error al eliminar: $e'),
+          backgroundColor: AppTheme.accentRed,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
     }
   }
 
@@ -173,15 +286,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         equipments: actaEquipments,
       );
 
-      // Extract payment method from history for the acta
+      // Extract payment method from history note format:
+      // "Entregado por $monto - $metodoPago - Garantia: ..."
       String? reprintPayment;
       for (final h in _history.reversed) {
         final notes = h['notes'] as String? ?? '';
         if (notes.contains('Entregado por')) {
-          if (notes.contains('Efectivo')) { reprintPayment = 'Efectivo'; break; }
-          if (notes.contains('Transferencia')) { reprintPayment = 'Transferencia'; break; }
-          if (notes.contains('Tarjeta de Credito')) { reprintPayment = 'Tarjeta de Credito'; break; }
-          if (notes.contains('Tarjeta de Debito')) { reprintPayment = 'Tarjeta de Debito'; break; }
+          final dashParts = notes.split(' - ');
+          if (dashParts.length >= 2) {
+            final candidate = dashParts[1].trim();
+            if (candidate.isNotEmpty && !candidate.startsWith('Garantia')) {
+              reprintPayment = candidate;
+            }
+          }
+          break;
         }
       }
 
@@ -480,7 +598,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   Future<void> _changeEquipmentStatus(String equipmentId, String newStatus) async {
-    // Check technician assignment before diagnosing
     if (newStatus == 'diagnosing') {
       final eq = _displayEquipments.where((e) => e.id == equipmentId).firstOrNull;
       final hasTech = eq?.technicianId != null || _order.technicianId != null;
@@ -495,8 +612,25 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       }
     }
 
+    if (newStatus == 'ready') {
+      try {
+        if (_isSingleDevice) {
+          await _orderService.updateStatus(_order.id, newStatus);
+        } else {
+          await _orderService.updateEquipmentStatus(_order.id, equipmentId, newStatus);
+        }
+        _refreshOrder();
+        _loadHistory();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.accentRed));
+        }
+      }
+      return;
+    }
+
     final notesCtrl = TextEditingController();
-    final notesRequired = newStatus == 'diagnosing' || newStatus == 'repairing';
 
     String labelText;
     String hintText;
@@ -509,17 +643,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         labelText = 'Trabajo a realizar *';
         hintText = 'Ej: Se procedera con cambio de pantalla...';
         break;
-      case 'ready':
-        labelText = 'Observaciones (opcional)';
-        hintText = 'Ej: Reparacion completada...';
-        break;
       default:
         labelText = 'Notas (opcional)';
         hintText = '';
     }
 
     void confirmAction(BuildContext ctx) {
-      if (notesRequired && notesCtrl.text.trim().isEmpty) {
+      if (notesCtrl.text.trim().isEmpty) {
         ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
           content: Text('Este campo es obligatorio'),
           backgroundColor: AppTheme.accentOrange,
@@ -551,10 +681,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         ]),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-          ElevatedButton(
-            onPressed: () => confirmAction(ctx),
-            child: const Text('Confirmar'),
-          ),
+          ElevatedButton(onPressed: () => confirmAction(ctx), child: const Text('Confirmar')),
         ],
       ),
     );
@@ -629,8 +756,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           _order.id, eq.id, 'returned', notes: notesCtrl.text.trim(),
         );
       }
-      _refreshOrder();
-      _loadHistory();
+      if (mounted) {
+        await _refreshOrder();
+        context.read<OrdersBloc>().add(OrdersLoadRequested());
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('${eq.summary} devuelto — constancia en historial'),
+          backgroundColor: AppTheme.accentOrange,
+        ));
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -809,8 +942,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Future<void> _refreshOrder() async {
     try {
       final updated = await _orderService.getOrder(_order.id);
-      setState(() => _order = updated);
-      _loadHistory();
+      if (mounted) {
+        setState(() => _order = updated);
+        _loadHistory();
+      }
     } catch (_) {}
   }
 
@@ -954,6 +1089,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     ));
                   }
                 }
+              }
+              final authState = context.read<AuthBloc>().state;
+              final canDelete = authState is AuthAuthenticated &&
+                  (authState.user.isAdmin || authState.user.isSupervisor);
+              if (canDelete) {
+                if (items.isNotEmpty) items.add(const PopupMenuDivider());
+                items.add(PopupMenuItem(
+                  value: 'delete_order',
+                  child: Row(children: [
+                    Icon(Icons.delete_rounded, size: 18, color: AppTheme.accentRed),
+                    const SizedBox(width: 10),
+                    Text('Eliminar orden', style: TextStyle(color: AppTheme.accentRed, fontWeight: FontWeight.w600)),
+                  ]),
+                ));
               }
               return items;
             },
@@ -2028,14 +2177,15 @@ class _MiniPatternPainter extends CustomPainter {
       ..color = const Color(0xFF4FC3F7).withValues(alpha: 0.7)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
-    final dotPaint = Paint()..color = const Color(0xFF90CAF9);
-    final activePaint = Paint()..color = const Color(0xFF4FC3F7);
+    final dotPaint = Paint()..color = const Color(0xFF546E7A);
 
-    // Draw all 9 nodes as small dots
+    // Draw all 9 nodes as small grey dots
     for (int n = 1; n <= 9; n++) {
       final c = _center(n, size);
       canvas.drawCircle(c, 3, dotPaint);
     }
+
+    if (nodes.isEmpty) return;
 
     // Draw lines between selected nodes
     for (int i = 0; i < nodes.length - 1; i++) {
@@ -2044,10 +2194,25 @@ class _MiniPatternPainter extends CustomPainter {
       canvas.drawLine(from, to, linePaint);
     }
 
-    // Draw selected nodes on top
-    for (final n in nodes) {
-      final c = _center(n, size);
-      canvas.drawCircle(c, 4, activePaint);
+    // Draw selected nodes: green for first, red for last, cyan for middle
+    for (int idx = 0; idx < nodes.length; idx++) {
+      final c = _center(nodes[idx], size);
+      final Color color;
+      if (idx == 0) {
+        color = const Color(0xFF4CAF50); // green — start
+      } else if (idx == nodes.length - 1 && nodes.length > 1) {
+        color = const Color(0xFFEF5350); // red — end
+      } else {
+        color = const Color(0xFF4FC3F7); // cyan — middle
+      }
+      canvas.drawCircle(c, 5, Paint()..color = color);
+      // Ring around start and end
+      if (idx == 0 || (idx == nodes.length - 1 && nodes.length > 1)) {
+        canvas.drawCircle(c, 7, Paint()
+          ..color = color.withValues(alpha: 0.35)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2);
+      }
     }
   }
 

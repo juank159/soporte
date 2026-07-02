@@ -21,11 +21,7 @@ class DeliveryScreen extends StatefulWidget {
   final ServiceOrder order;
   final Tenant tenant;
 
-  const DeliveryScreen({
-    super.key,
-    required this.order,
-    required this.tenant,
-  });
+  const DeliveryScreen({super.key, required this.order, required this.tenant});
 
   @override
   State<DeliveryScreen> createState() => _DeliveryScreenState();
@@ -37,6 +33,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
   final ApiService _api = ApiService();
 
   Uint8List? _clientSignature;
+  bool _clientSignatureOmitted = false;
   Uint8List? _technicianSignature;
   final _clientNameCtrl = TextEditingController();
   final _totalCtrl = TextEditingController(); // used only for single-device
@@ -120,10 +117,12 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
           .toList();
       setState(() {
         _technicians = allUsers
-            .where((u) =>
-                u.role == 'technician' ||
-                u.role == 'supervisor' ||
-                u.role == 'admin')
+            .where(
+              (u) =>
+                  u.role == 'technician' ||
+                  u.role == 'supervisor' ||
+                  u.role == 'admin',
+            )
             .toList();
         // Auto-select the assigned technician
         if (widget.order.technicianId != null) {
@@ -131,7 +130,8 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
               .where((t) => t.id == widget.order.technicianId)
               .firstOrNull;
           // Auto-load technician signature if available
-          if (_assignedTechnician != null && _assignedTechnician!.hasSignature) {
+          if (_assignedTechnician != null &&
+              _assignedTechnician!.hasSignature) {
             _loadTechnicianSignature(_assignedTechnician!.signatureUrl!);
           }
         }
@@ -148,7 +148,10 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
       if (sigUrl.contains('base64,')) {
         bytes = base64Decode(sigUrl.split('base64,').last);
       } else if (sigUrl.startsWith('http')) {
-        final res = await _api.dio.get(sigUrl, options: dio.Options(responseType: dio.ResponseType.bytes));
+        final res = await _api.dio.get(
+          sigUrl,
+          options: dio.Options(responseType: dio.ResponseType.bytes),
+        );
         bytes = Uint8List.fromList(res.data as List<int>);
       }
       if (bytes != null && bytes.isNotEmpty && mounted) {
@@ -161,7 +164,10 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
     if (_clientNameCtrl.text.isEmpty) return false;
     if (_assignedTechnician == null) return false;
     if (_technicianSignature == null) return false;
-    if (_requiresClientSignature && _clientSignature == null) return false;
+    if (_requiresClientSignature &&
+        _clientSignature == null &&
+        !_clientSignatureOmitted)
+      return false;
 
     if (_isMultiDevice) {
       for (final eq in _readyEquipments) {
@@ -169,13 +175,15 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         if (_equipmentPaymentMethod[eq.id] == null) return false;
         if (_equipmentHasWarranty[eq.id] == null) return false;
         if (_equipmentHasWarranty[eq.id] == true &&
-            (_equipmentWarrantyCtrl[eq.id]?.text.isEmpty ?? true)) return false;
+            (_equipmentWarrantyCtrl[eq.id]?.text.isEmpty ?? true))
+          return false;
       }
     } else {
       if (_totalCtrl.text.isEmpty) return false;
       if (_paymentMethod == null) return false;
       if (_hasWarranty == null) return false;
-      if (_hasWarranty == true && _warrantyMonthsCtrl.text.isEmpty) return false;
+      if (_hasWarranty == true && _warrantyMonthsCtrl.text.isEmpty)
+        return false;
     }
 
     return true;
@@ -194,7 +202,9 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         readyEquipments = _readyEquipments;
         totalValue = 0;
         for (final eq in readyEquipments) {
-          totalValue += parseFormattedMoney(_equipmentValueCtrl[eq.id]!.text.trim());
+          totalValue += parseFormattedMoney(
+            _equipmentValueCtrl[eq.id]!.text.trim(),
+          );
         }
       } else {
         readyEquipments = [];
@@ -206,50 +216,65 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
       try {
         final globalWarrantyDays = _isMultiDevice
             ? widget.order.warrantyDays
-            : (_hasWarranty == true ? (int.tryParse(_warrantyMonthsCtrl.text.trim()) ?? 1) * 30 : 0);
-        await _api.dio.patch('/orders/${widget.order.id}/delivery-info', data: {
-          'total': newTotal,
-          'warrantyDays': globalWarrantyDays,
-        });
+            : (_hasWarranty == true
+                  ? (int.tryParse(_warrantyMonthsCtrl.text.trim()) ?? 1) * 30
+                  : 0);
+        await _api.dio.patch(
+          '/orders/${widget.order.id}/delivery-info',
+          data: {'total': newTotal, 'warrantyDays': globalWarrantyDays},
+        );
       } catch (_) {}
 
       if (_isMultiDevice) {
         for (final eq in readyEquipments) {
-          final eqValue = parseFormattedMoney(_equipmentValueCtrl[eq.id]!.text.trim());
+          final eqValue = parseFormattedMoney(
+            _equipmentValueCtrl[eq.id]!.text.trim(),
+          );
           final eqPayment = _equipmentPaymentMethod[eq.id]!;
           final eqHasWarranty = _equipmentHasWarranty[eq.id] == true;
           final eqWarrantyMonths = eqHasWarranty
               ? (int.tryParse(_equipmentWarrantyCtrl[eq.id]!.text.trim()) ?? 1)
               : 0;
           final eqWarrantyDays = eqHasWarranty ? eqWarrantyMonths * 30 : 0;
-          final eqWarrantyLabel = eqHasWarranty ? '$eqWarrantyMonths mes(es)' : 'Sin garantia';
+          final eqWarrantyLabel = eqHasWarranty
+              ? '$eqWarrantyMonths mes(es)'
+              : 'Sin garantia';
           final deliveryNote =
               'Entregado por \$${_equipmentValueCtrl[eq.id]!.text.trim()} - $eqPayment - Garantia: $eqWarrantyLabel';
           try {
-            await _api.dio.patch('/orders/${widget.order.id}/equipments/${eq.id}/status', data: {
-              'status': 'delivered',
-              'notes': deliveryNote,
-              'warrantyDays': eqWarrantyDays,
-              'laborCost': eqValue,
-              'paymentMethod': eqPayment,
-            });
+            await _api.dio.patch(
+              '/orders/${widget.order.id}/equipments/${eq.id}/status',
+              data: {
+                'status': 'delivered',
+                'notes': deliveryNote,
+                'warrantyDays': eqWarrantyDays,
+                'laborCost': eqValue,
+                'paymentMethod': eqPayment,
+              },
+            );
           } catch (_) {}
         }
       } else {
-        final singleWarrantyMonths = int.tryParse(_warrantyMonthsCtrl.text.trim()) ?? 1;
-        final singleWarrantyDays = _hasWarranty == true ? singleWarrantyMonths * 30 : 0;
-        final singleWarrantyLabel = _hasWarranty == true ? '$singleWarrantyMonths mes(es)' : 'Sin garantia';
+        final singleWarrantyMonths =
+            int.tryParse(_warrantyMonthsCtrl.text.trim()) ?? 1;
+        final singleWarrantyDays = _hasWarranty == true
+            ? singleWarrantyMonths * 30
+            : 0;
+        final singleWarrantyLabel = _hasWarranty == true
+            ? '$singleWarrantyMonths mes(es)'
+            : 'Sin garantia';
         final deliveryNote =
             'Entregado por \$${_totalCtrl.text.trim()} - ${_paymentMethod!} - Garantia: $singleWarrantyLabel';
         try {
-          await _api.dio.patch('/orders/${widget.order.id}/status', data: {
-            'status': 'delivered',
-            'notes': deliveryNote,
-          });
+          await _api.dio.patch(
+            '/orders/${widget.order.id}/status',
+            data: {'status': 'delivered', 'notes': deliveryNote},
+          );
           // Update single-device warranty on order
-          await _api.dio.patch('/orders/${widget.order.id}/delivery-info', data: {
-            'warrantyDays': singleWarrantyDays,
-          });
+          await _api.dio.patch(
+            '/orders/${widget.order.id}/delivery-info',
+            data: {'warrantyDays': singleWarrantyDays},
+          );
         } catch (_) {}
       }
       _statusUpdated = true;
@@ -270,7 +295,9 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
           .where((eq) => deliveredIds.contains(eq.id))
           .toList();
 
-      final singleWarrantyMonthsFinal = _isMultiDevice ? 0 : (int.tryParse(_warrantyMonthsCtrl.text.trim()) ?? 1);
+      final singleWarrantyMonthsFinal = _isMultiDevice
+          ? 0
+          : (int.tryParse(_warrantyMonthsCtrl.text.trim()) ?? 1);
       final warrantyDaysForPdf = _isMultiDevice
           ? widget.order.warrantyDays
           : (_hasWarranty == true ? singleWarrantyMonthsFinal * 30 : 0);
@@ -305,18 +332,23 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         try {
           final bytes = await _deliveryPhoto!.readAsBytes();
           final b64 = 'data:image/jpeg;base64,${base64Encode(bytes)}';
-          await _api.dio.post('/orders/${widget.order.id}/photos', data: {
-            'photoUrl': b64,
-            'description': 'Foto de entrega',
-            'stage': 'delivery',
-          });
+          await _api.dio.post(
+            '/orders/${widget.order.id}/photos',
+            data: {
+              'photoUrl': b64,
+              'description': 'Foto de entrega',
+              'stage': 'delivery',
+            },
+          );
         } catch (_) {}
       }
 
       // Save signatures to backend for future reprints
       try {
         final techB64 = base64Encode(_technicianSignature!);
-        if (_requiresClientSignature && _clientSignature != null) {
+        if (_requiresClientSignature &&
+            _clientSignature != null &&
+            !_clientSignatureOmitted) {
           final clientB64 = base64Encode(_clientSignature!);
           await _api.dio.post(
             '/orders/${widget.order.id}/signatures',
@@ -340,7 +372,9 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
       // Load history for payment method extraction in PDF
       List<Map<String, dynamic>> historyData = [];
       try {
-        final histRes = await _api.dio.get('/orders/${widget.order.id}/history');
+        final histRes = await _api.dio.get(
+          '/orders/${widget.order.id}/history',
+        );
         historyData = (histRes.data as List).cast<Map<String, dynamic>>();
       } catch (_) {}
 
@@ -358,7 +392,10 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
       final pdfBytes = await _pdfService.generateDeliveryAct(
         order: orderForPdf,
         tenant: widget.tenant,
-        clientSignaturePng: _requiresClientSignature && _clientSignature != null
+        clientSignaturePng:
+            _requiresClientSignature &&
+                _clientSignature != null &&
+                !_clientSignatureOmitted
             ? _clientSignature!
             : Uint8List(0),
         clientName: clientName,
@@ -375,10 +412,12 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
     } catch (e) {
       setState(() => _generating = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: AppTheme.accentRed,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: AppTheme.accentRed,
+          ),
+        );
       }
     }
   }
@@ -391,11 +430,15 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: methods.map((m) => ChoiceChip(
-        label: Text(m, style: const TextStyle(fontSize: 13)),
-        selected: selected == m,
-        onSelected: (_) => onSelected(m),
-      )).toList(),
+      children: methods
+          .map(
+            (m) => ChoiceChip(
+              label: Text(m, style: const TextStyle(fontSize: 13)),
+              selected: selected == m,
+              onSelected: (_) => onSelected(m),
+            ),
+          )
+          .toList(),
     );
   }
 
@@ -404,35 +447,40 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
     required ValueChanged<bool?> onWarrantyChanged,
     required TextEditingController monthsCtrl,
   }) {
-    return Row(children: [
-      ChoiceChip(
-        label: const Text('Si'),
-        selected: hasWarranty == true,
-        onSelected: (_) => onWarrantyChanged(true),
-      ),
-      const SizedBox(width: 8),
-      ChoiceChip(
-        label: const Text('No'),
-        selected: hasWarranty == false,
-        onSelected: (_) => onWarrantyChanged(false),
-      ),
-      if (hasWarranty == true) ...[
-        const SizedBox(width: 16),
-        SizedBox(
-          width: 100,
-          child: TextField(
-            controller: monthsCtrl,
-            style: TextStyle(color: AppTheme.textPrimary),
-            keyboardType: TextInputType.number,
-            textAlign: TextAlign.center,
-            decoration: const InputDecoration(
-              labelText: 'Meses',
-              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+    return Row(
+      children: [
+        ChoiceChip(
+          label: const Text('Si'),
+          selected: hasWarranty == true,
+          onSelected: (_) => onWarrantyChanged(true),
+        ),
+        const SizedBox(width: 8),
+        ChoiceChip(
+          label: const Text('No'),
+          selected: hasWarranty == false,
+          onSelected: (_) => onWarrantyChanged(false),
+        ),
+        if (hasWarranty == true) ...[
+          const SizedBox(width: 16),
+          SizedBox(
+            width: 100,
+            child: TextField(
+              controller: monthsCtrl,
+              style: TextStyle(color: AppTheme.textPrimary),
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              decoration: const InputDecoration(
+                labelText: 'Meses',
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 8,
+                ),
+              ),
             ),
           ),
-        ),
+        ],
       ],
-    ]);
+    );
   }
 
   void _finish() {
@@ -459,8 +507,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
             colors: AppTheme.gradientPrimary,
           ),
         ),
-        child:
-            _generatedPdf != null ? _buildSuccessView() : _buildForm(),
+        child: _generatedPdf != null ? _buildSuccessView() : _buildForm(),
       ),
     );
   }
@@ -477,22 +524,34 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(children: [
-                  Icon(Icons.assignment_rounded,
-                      color: AppTheme.accentCyan, size: 20),
-                  SizedBox(width: 8),
-                  Text('Resumen',
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.assignment_rounded,
+                      color: AppTheme.accentCyan,
+                      size: 20,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Resumen',
                       style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.accentCyan,
-                          fontSize: 15)),
-                ]),
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.accentCyan,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 _infoRow('Orden', widget.order.orderNumber),
-                _infoRow('Cliente',
-                    widget.order.customer?.fullName ?? 'Express'),
-                _infoRow('Equipo',
-                    '${widget.order.device?.brand ?? ''} ${widget.order.device?.model ?? ''}'),
+                _infoRow(
+                  'Cliente',
+                  widget.order.customer?.fullName ?? 'Express',
+                ),
+                _infoRow(
+                  'Equipo',
+                  '${widget.order.device?.brand ?? ''} ${widget.order.device?.model ?? ''}',
+                ),
                 _infoRow('Problema', widget.order.problemReported),
                 if (widget.order.diagnosis != null)
                   _infoRow('Trabajo', widget.order.diagnosis!),
@@ -506,12 +565,24 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(children: [
-                  Icon(Icons.attach_money_rounded, color: AppTheme.accentGreen, size: 20),
-                  SizedBox(width: 8),
-                  Text('Valor y garantia',
-                      style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.accentGreen, fontSize: 15)),
-                ]),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.attach_money_rounded,
+                      color: AppTheme.accentGreen,
+                      size: 20,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Valor y garantia',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.accentGreen,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ),
                 SizedBox(height: 16),
 
                 // Single-device: one global value + payment
@@ -528,8 +599,13 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                     ),
                   ),
                   SizedBox(height: 16),
-                  Text('Metodo de pago: *',
-                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                  Text(
+                    'Metodo de pago: *',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
                   SizedBox(height: 8),
                   _paymentMethodSelector(
                     selected: _paymentMethod,
@@ -542,77 +618,144 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                   if (_readyEquipments.isEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Text('No hay equipos listos para entregar',
-                          style: TextStyle(color: AppTheme.accentOrange, fontSize: 13)),
+                      child: Text(
+                        'No hay equipos listos para entregar',
+                        style: TextStyle(
+                          color: AppTheme.accentOrange,
+                          fontSize: 13,
+                        ),
+                      ),
                     )
                   else ...[
-                    Text('Valor, pago y garantia por equipo:',
-                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                    Text(
+                      'Valor, pago y garantia por equipo:',
+                      style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
                     const SizedBox(height: 12),
-                    ..._readyEquipments.map((eq) => Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.cardColor.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppTheme.dividerColor),
+                    ..._readyEquipments.map(
+                      (eq) => Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.cardColor.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppTheme.dividerColor),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.devices_rounded,
+                                  size: 14,
+                                  color: AppTheme.accentCyan,
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    eq.summary,
+                                    style: TextStyle(
+                                      color: AppTheme.textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            TextField(
+                              controller: _equipmentValueCtrl[eq.id],
+                              style: TextStyle(color: AppTheme.textPrimary),
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [ThousandSeparatorFormatter()],
+                              decoration: const InputDecoration(
+                                labelText: 'Valor de este servicio *',
+                                prefixText: '\$ ',
+                                prefixIcon: Icon(
+                                  Icons.payments_rounded,
+                                  size: 18,
+                                ),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Pago: *',
+                              style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            _paymentMethodSelector(
+                              selected: _equipmentPaymentMethod[eq.id],
+                              onSelected: (v) => setState(
+                                () => _equipmentPaymentMethod[eq.id] = v,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Garantia: *',
+                              style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            _warrantyRow(
+                              hasWarranty: _equipmentHasWarranty[eq.id],
+                              onWarrantyChanged: (v) => setState(
+                                () => _equipmentHasWarranty[eq.id] = v,
+                              ),
+                              monthsCtrl: _equipmentWarrantyCtrl[eq.id]!,
+                            ),
+                          ],
+                        ),
                       ),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Row(children: [
-                          const Icon(Icons.devices_rounded, size: 14, color: AppTheme.accentCyan),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(eq.summary,
-                                style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
-                          ),
-                        ]),
-                        const SizedBox(height: 10),
-                        TextField(
-                          controller: _equipmentValueCtrl[eq.id],
-                          style: TextStyle(color: AppTheme.textPrimary),
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [ThousandSeparatorFormatter()],
-                          decoration: const InputDecoration(
-                            labelText: 'Valor de este servicio *',
-                            prefixText: '\$ ',
-                            prefixIcon: Icon(Icons.payments_rounded, size: 18),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text('Pago: *', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                        const SizedBox(height: 6),
-                        _paymentMethodSelector(
-                          selected: _equipmentPaymentMethod[eq.id],
-                          onSelected: (v) => setState(() => _equipmentPaymentMethod[eq.id] = v),
-                        ),
-                        const SizedBox(height: 10),
-                        Text('Garantia: *', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                        const SizedBox(height: 6),
-                        _warrantyRow(
-                          hasWarranty: _equipmentHasWarranty[eq.id],
-                          onWarrantyChanged: (v) => setState(() => _equipmentHasWarranty[eq.id] = v),
-                          monthsCtrl: _equipmentWarrantyCtrl[eq.id]!,
-                        ),
-                      ]),
-                    )),
+                    ),
                     Divider(color: AppTheme.dividerColor),
-                    Row(children: [
-                      Text('Total calculado:',
-                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
-                      const Spacer(),
-                      Text(
-                        '\$ ${formatMoney(_multiDeviceTotal)}',
-                        style: const TextStyle(color: AppTheme.accentGreen, fontWeight: FontWeight.w800, fontSize: 16),
-                      ),
-                    ]),
+                    Row(
+                      children: [
+                        Text(
+                          'Total calculado:',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '\$ ${formatMoney(_multiDeviceTotal)}',
+                          style: const TextStyle(
+                            color: AppTheme.accentGreen,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ],
 
                 // Single-device global warranty
                 if (!_isMultiDevice) ...[
                   const SizedBox(height: 16),
-                  Text('Garantia: *', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                  Text(
+                    'Garantia: *',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   _warrantyRow(
                     hasWarranty: _hasWarranty,
@@ -630,56 +773,144 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(children: [
-                  Icon(Icons.person_rounded,
-                      color: AppTheme.accentBlue, size: 18),
-                  SizedBox(width: 8),
-                  Text('Recibe conforme',
+                Row(
+                  children: [
+                    Icon(
+                      Icons.person_rounded,
+                      color: AppTheme.accentBlue,
+                      size: 18,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Recibe conforme',
                       style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.accentBlue,
-                          fontSize: 14)),
-                ]),
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.accentBlue,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
                 SizedBox(height: 12),
                 TextField(
                   controller: _clientNameCtrl,
                   style: TextStyle(color: AppTheme.textPrimary),
-                  readOnly: widget.order.customer?.fullName != null &&
+                  readOnly:
+                      widget.order.customer?.fullName != null &&
                       widget.order.customer!.fullName.isNotEmpty &&
                       widget.order.customer!.idNumber != 'EXPRESS',
                   decoration: InputDecoration(
                     labelText: 'Nombre de quien recibe',
                     prefixIcon: Icon(Icons.badge_rounded),
-                    suffixIcon: widget.order.customer?.fullName != null &&
-                        widget.order.customer!.idNumber != 'EXPRESS'
-                        ? Icon(Icons.lock_rounded,
-                            size: 16, color: AppTheme.textSecondary)
+                    suffixIcon:
+                        widget.order.customer?.fullName != null &&
+                            widget.order.customer!.idNumber != 'EXPRESS'
+                        ? Icon(
+                            Icons.lock_rounded,
+                            size: 16,
+                            color: AppTheme.textSecondary,
+                          )
                         : null,
                   ),
                 ),
                 const SizedBox(height: 16),
                 if (_requiresClientSignature)
-                  SignaturePadWidget(
-                    label: 'Firma de quien recibe',
-                    fullScreen: true,
-                    onSigned: (data) => setState(() => _clientSignature = data),
-                  )
+                  if (_clientSignatureOmitted)
+                    GestureDetector(
+                      onTap: () => setState(() {
+                        _clientSignatureOmitted = false;
+                        _clientSignature = null;
+                      }),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accentOrange.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: AppTheme.accentOrange.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.do_not_disturb_rounded,
+                              color: AppTheme.accentOrange,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Firma omitida — se imprime sin firma del cliente',
+                                style: TextStyle(
+                                  color: AppTheme.accentOrange,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              Icons.close_rounded,
+                              color: AppTheme.accentOrange,
+                              size: 16,
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SignaturePadWidget(
+                          label: 'Firma de quien recibe',
+                          fullScreen: true,
+                          onSigned: (data) => setState(() {
+                            _clientSignature = data;
+                            _clientSignatureOmitted = false;
+                          }),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          onPressed: () => setState(() {
+                            _clientSignature = null;
+                            _clientSignatureOmitted = true;
+                          }),
+                          icon: const Icon(Icons.skip_next_rounded, size: 16),
+                          label: const Text('Omitir firma'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ],
+                    )
                 else
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: AppTheme.accentOrange.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppTheme.accentOrange.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(children: [
-                      Icon(Icons.info_outline_rounded, color: AppTheme.accentOrange, size: 18),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text('Sin firma de cliente (configurado al crear la orden)',
-                            style: TextStyle(color: AppTheme.accentOrange, fontSize: 12)),
+                      border: Border.all(
+                        color: AppTheme.accentOrange.withValues(alpha: 0.3),
                       ),
-                    ]),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline_rounded,
+                          color: AppTheme.accentOrange,
+                          size: 18,
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Sin firma de cliente (configurado al crear la orden)',
+                            style: TextStyle(
+                              color: AppTheme.accentOrange,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
               ],
             ),
@@ -691,37 +922,54 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(children: [
-                  Icon(Icons.engineering_rounded,
-                      color: AppTheme.accentPurple, size: 18),
-                  SizedBox(width: 8),
-                  Text('Entrega',
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.engineering_rounded,
+                      color: AppTheme.accentPurple,
+                      size: 18,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Entrega',
                       style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.accentPurple,
-                          fontSize: 14)),
-                ]),
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.accentPurple,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
                 SizedBox(height: 12),
                 if (_loadingTechnicians)
                   Center(
-                      child: CircularProgressIndicator(
-                          color: AppTheme.accentCyan))
+                    child: CircularProgressIndicator(
+                      color: AppTheme.accentCyan,
+                    ),
+                  )
                 else if (_assignedTechnician != null)
                   // Show assigned technician (can't change here)
                   GlassCard(
                     margin: EdgeInsets.zero,
-                    borderColor:
-                        AppTheme.accentGreen.withValues(alpha: 0.3),
+                    borderColor: AppTheme.accentGreen.withValues(alpha: 0.3),
                     padding: EdgeInsets.all(10),
-                    child: Row(children: [
-                      Icon(Icons.check_circle_rounded,
-                          color: AppTheme.accentGreen, size: 18),
-                      SizedBox(width: 10),
-                      Text(_assignedTechnician!.fullName,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle_rounded,
+                          color: AppTheme.accentGreen,
+                          size: 18,
+                        ),
+                        SizedBox(width: 10),
+                        Text(
+                          _assignedTechnician!.fullName,
                           style: TextStyle(
-                              color: AppTheme.textPrimary,
-                              fontWeight: FontWeight.w600)),
-                    ]),
+                            color: AppTheme.textPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   )
                 else
                   // Select technician if none assigned
@@ -729,8 +977,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                     spacing: 8,
                     runSpacing: 8,
                     children: _technicians.map((tech) {
-                      final selected =
-                          _assignedTechnician?.id == tech.id;
+                      final selected = _assignedTechnician?.id == tech.id;
                       return ChoiceChip(
                         label: Text(tech.fullName),
                         selected: selected,
@@ -753,54 +1000,92 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
           // Technician signature
           if (_assignedTechnician != null)
             GlassCard(
-              borderColor:
-                  AppTheme.accentPurple.withValues(alpha: 0.3),
+              borderColor: AppTheme.accentPurple.withValues(alpha: 0.3),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(children: [
-                    const Icon(Icons.draw_rounded,
-                        color: AppTheme.accentPurple, size: 18),
-                    const SizedBox(width: 8),
-                    Text('Firma de ${_assignedTechnician!.fullName}',
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.draw_rounded,
+                        color: AppTheme.accentPurple,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Firma de ${_assignedTechnician!.fullName}',
                         style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.accentPurple,
-                            fontSize: 14)),
-                  ]),
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.accentPurple,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 12),
                   // If technician already has saved signature, show it
-                  if (_technicianSignature != null && _assignedTechnician!.hasSignature)
-                    Column(children: [
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppTheme.accentGreen.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppTheme.accentGreen.withValues(alpha: 0.3)),
+                  if (_technicianSignature != null &&
+                      _assignedTechnician!.hasSignature)
+                    Column(
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.accentGreen.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: AppTheme.accentGreen.withValues(
+                                alpha: 0.3,
+                              ),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Image.memory(_technicianSignature!, height: 60),
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.check_circle_rounded,
+                                    color: AppTheme.accentGreen,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Firma guardada',
+                                    style: TextStyle(
+                                      color: AppTheme.accentGreen,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                        child: Column(children: [
-                          Image.memory(_technicianSignature!, height: 60),
-                          const SizedBox(height: 6),
-                          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            Icon(Icons.check_circle_rounded, color: AppTheme.accentGreen, size: 16),
-                            const SizedBox(width: 6),
-                            Text('Firma guardada', style: TextStyle(color: AppTheme.accentGreen, fontSize: 12, fontWeight: FontWeight.w600)),
-                          ]),
-                        ]),
-                      ),
-                      const SizedBox(height: 8),
-                      TextButton(
-                        onPressed: () => setState(() => _technicianSignature = null),
-                        child: Text('Firmar manualmente', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                      ),
-                    ])
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: () =>
+                              setState(() => _technicianSignature = null),
+                          child: Text(
+                            'Firmar manualmente',
+                            style: TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
                   else
                     SignaturePadWidget(
                       key: ValueKey('tech_sig_${_assignedTechnician!.id}'),
                       label: 'Firme aqui',
-                      onSigned: (data) => setState(() => _technicianSignature = data),
+                      onSigned: (data) =>
+                          setState(() => _technicianSignature = data),
                     ),
                 ],
               ),
@@ -812,37 +1097,53 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(children: [
-                  Icon(Icons.camera_alt_rounded,
-                      color: AppTheme.accentOrange, size: 18),
-                  SizedBox(width: 8),
-                  Text('Foto de entrega (opcional)',
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.camera_alt_rounded,
+                      color: AppTheme.accentOrange,
+                      size: 18,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Foto de entrega (opcional)',
                       style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.accentOrange,
-                          fontSize: 14)),
-                ]),
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.accentOrange,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 10),
                 if (_deliveryPhoto != null)
                   Stack(
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(10),
-                        child: Image.file(_deliveryPhoto!,
-                            height: 120, width: double.infinity,
-                            fit: BoxFit.cover),
+                        child: Image.file(
+                          _deliveryPhoto!,
+                          height: 120,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
                       ),
                       Positioned(
-                        top: 4, right: 4,
+                        top: 4,
+                        right: 4,
                         child: GestureDetector(
                           onTap: () => setState(() => _deliveryPhoto = null),
                           child: Container(
                             padding: const EdgeInsets.all(4),
                             decoration: const BoxDecoration(
-                                color: AppTheme.accentRed,
-                                shape: BoxShape.circle),
-                            child: const Icon(Icons.close,
-                                color: Colors.white, size: 16),
+                              color: AppTheme.accentRed,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 16,
+                            ),
                           ),
                         ),
                       ),
@@ -853,8 +1154,11 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                     width: double.infinity,
                     child: OutlinedButton.icon(
                       onPressed: () async {
-                        final isDesktop = !kIsWeb &&
-                            (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
+                        final isDesktop =
+                            !kIsWeb &&
+                            (Platform.isMacOS ||
+                                Platform.isWindows ||
+                                Platform.isLinux);
                         final picker = ImagePicker();
                         try {
                           final img = await picker.pickImage(
@@ -884,19 +1188,21 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
             width: double.infinity,
             height: 52,
             child: ElevatedButton.icon(
-              onPressed:
-                  _canGenerate && !_generating ? _generateAndDeliver : null,
+              onPressed: _canGenerate && !_generating
+                  ? _generateAndDeliver
+                  : null,
               icon: _generating
                   ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: AppTheme.primaryColor))
+                        strokeWidth: 2,
+                        color: AppTheme.primaryColor,
+                      ),
+                    )
                   : const Icon(Icons.check_circle_rounded),
               label: Text(
-                _generating
-                    ? 'Generando acta...'
-                    : 'Firmar y entregar equipo',
+                _generating ? 'Generando acta...' : 'Firmar y entregar equipo',
                 style: const TextStyle(fontSize: 16),
               ),
             ),
@@ -908,22 +1214,47 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
               child: Text(
                 () {
                   if (!_isMultiDevice) {
-                    if (_totalCtrl.text.isEmpty) return 'Ingrese el valor del servicio';
-                    if (_paymentMethod == null) return 'Seleccione el metodo de pago';
-                    if (_hasWarranty == null) return 'Seleccione si hay garantia (Si / No)';
-                    if (_hasWarranty == true && _warrantyMonthsCtrl.text.isEmpty) return 'Ingrese los meses de garantia';
+                    if (_totalCtrl.text.isEmpty)
+                      return 'Ingrese el valor del servicio';
+                    if (_paymentMethod == null)
+                      return 'Seleccione el metodo de pago';
+                    if (_hasWarranty == null)
+                      return 'Seleccione si hay garantia (Si / No)';
+                    if (_hasWarranty == true &&
+                        _warrantyMonthsCtrl.text.isEmpty)
+                      return 'Ingrese los meses de garantia';
                   } else {
-                    if (_readyEquipments.any((e) => _equipmentValueCtrl[e.id]?.text.isEmpty ?? true)) return 'Ingrese el valor para cada equipo';
-                    if (_readyEquipments.any((e) => _equipmentPaymentMethod[e.id] == null)) return 'Seleccione metodo de pago para cada equipo';
-                    if (_readyEquipments.any((e) => _equipmentHasWarranty[e.id] == null)) return 'Seleccione garantia para cada equipo';
-                    if (_readyEquipments.any((e) => _equipmentHasWarranty[e.id] == true && (_equipmentWarrantyCtrl[e.id]?.text.isEmpty ?? true))) return 'Ingrese los meses de garantia para cada equipo';
+                    if (_readyEquipments.any(
+                      (e) => _equipmentValueCtrl[e.id]?.text.isEmpty ?? true,
+                    ))
+                      return 'Ingrese el valor para cada equipo';
+                    if (_readyEquipments.any(
+                      (e) => _equipmentPaymentMethod[e.id] == null,
+                    ))
+                      return 'Seleccione metodo de pago para cada equipo';
+                    if (_readyEquipments.any(
+                      (e) => _equipmentHasWarranty[e.id] == null,
+                    ))
+                      return 'Seleccione garantia para cada equipo';
+                    if (_readyEquipments.any(
+                      (e) =>
+                          _equipmentHasWarranty[e.id] == true &&
+                          (_equipmentWarrantyCtrl[e.id]?.text.isEmpty ?? true),
+                    ))
+                      return 'Ingrese los meses de garantia para cada equipo';
                   }
-                  if (_assignedTechnician == null) return 'Seleccione el tecnico';
-                  if (_requiresClientSignature && _clientSignature == null) return 'Se requiere firma del cliente';
-                  if (_technicianSignature == null) return 'Se requiere firma del tecnico';
+                  if (_assignedTechnician == null)
+                    return 'Seleccione el tecnico';
+                  if (_requiresClientSignature && _clientSignature == null)
+                    return 'Se requiere firma del cliente';
+                  if (_technicianSignature == null)
+                    return 'Se requiere firma del tecnico';
                   return 'Complete el nombre de quien recibe';
                 }(),
-                style: const TextStyle(fontSize: 12, color: AppTheme.accentOrange),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.accentOrange,
+                ),
               ),
             ),
 
@@ -941,56 +1272,65 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
           borderColor: AppTheme.accentGreen.withValues(alpha: 0.4),
           child: Column(
             children: [
-              Icon(Icons.check_circle_rounded,
-                  color: AppTheme.accentGreen, size: 48),
+              Icon(
+                Icons.check_circle_rounded,
+                color: AppTheme.accentGreen,
+                size: 48,
+              ),
               SizedBox(height: 12),
-              Text('Equipo entregado',
-                  style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.accentGreen)),
+              Text(
+                'Equipo entregado',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.accentGreen,
+                ),
+              ),
               SizedBox(height: 4),
               Text(
                 'Orden ${widget.order.orderNumber}${_isMultiDevice ? ' - \$${formatMoney(_multiDeviceTotal)}' : ' - \$${_totalCtrl.text}'}',
-                style: TextStyle(
-                    color: AppTheme.textSecondary, fontSize: 13),
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 16),
-              Builder(builder: (ctx) {
-                final isDesktop =
-                    Theme.of(ctx).platform == TargetPlatform.macOS ||
-                    Theme.of(ctx).platform == TargetPlatform.windows ||
-                    Theme.of(ctx).platform == TargetPlatform.linux;
-                return Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                alignment: WrapAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 150,
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        await Printing.sharePdf(
-                          bytes: _generatedPdf!,
-                          filename: 'Acta_${widget.order.orderNumber}.pdf',
-                        );
-                      },
-                      icon: const Icon(Icons.print_rounded, size: 16),
-                      label: Text(isDesktop ? 'Imprimir' : 'Compartir',
-                          style: const TextStyle(fontSize: 12)),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 150,
-                    child: ElevatedButton.icon(
-                      onPressed: _finish,
-                      icon: const Icon(Icons.done_all_rounded, size: 18),
-                      label: const Text('Listo'),
-                    ),
-                  ),
-                ],
-              );
-              }),
+              Builder(
+                builder: (ctx) {
+                  final isDesktop =
+                      Theme.of(ctx).platform == TargetPlatform.macOS ||
+                      Theme.of(ctx).platform == TargetPlatform.windows ||
+                      Theme.of(ctx).platform == TargetPlatform.linux;
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 150,
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            await Printing.sharePdf(
+                              bytes: _generatedPdf!,
+                              filename: 'Acta_${widget.order.orderNumber}.pdf',
+                            );
+                          },
+                          icon: const Icon(Icons.print_rounded, size: 16),
+                          label: Text(
+                            isDesktop ? 'Imprimir' : 'Compartir',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: 150,
+                        child: ElevatedButton.icon(
+                          onPressed: _finish,
+                          icon: const Icon(Icons.done_all_rounded, size: 18),
+                          label: const Text('Listo'),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ],
           ),
         ),
@@ -1021,14 +1361,16 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         children: [
           SizedBox(
             width: 70,
-            child: Text(label,
-                style: TextStyle(
-                    color: AppTheme.textSecondary, fontSize: 12)),
+            child: Text(
+              label,
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+            ),
           ),
           Expanded(
-            child: Text(value,
-                style: TextStyle(
-                    color: AppTheme.textPrimary, fontSize: 12)),
+            child: Text(
+              value,
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 12),
+            ),
           ),
         ],
       ),
