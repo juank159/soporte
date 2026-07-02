@@ -52,6 +52,7 @@ class OrderService {
     required String customerId,
     required List<EquipmentData> equipments,
     List<File>? photos,
+    bool requiresClientSignature = true,
   }) async {
     final eq = equipments[0];
     final data = <String, dynamic>{
@@ -60,11 +61,15 @@ class OrderService {
       'deviceBrand': eq.deviceBrand,
       'deviceModel': eq.deviceModel,
       'problemReported': eq.problemReported,
+      'requiresClientSignature': requiresClientSignature,
     };
     if (eq.deviceSerial != null) data['deviceSerial'] = eq.deviceSerial;
     if (eq.deviceColor != null) data['deviceColor'] = eq.deviceColor;
     if (eq.accessories != null) data['accessories'] = eq.accessories;
     if (eq.technicianId != null) data['technicianId'] = eq.technicianId;
+    if (eq.unlockPassword != null) data['unlockPassword'] = eq.unlockPassword;
+    if (eq.unlockPin != null) data['unlockPin'] = eq.unlockPin;
+    if (eq.unlockPattern != null) data['unlockPattern'] = eq.unlockPattern;
 
     // If multiple equipments, send the full array for the new backend
     if (equipments.length > 1) {
@@ -79,6 +84,9 @@ class OrderService {
         if (e.deviceColor != null) m['deviceColor'] = e.deviceColor;
         if (e.accessories != null) m['accessories'] = e.accessories;
         if (e.technicianId != null) m['technicianId'] = e.technicianId;
+        if (e.unlockPassword != null) m['unlockPassword'] = e.unlockPassword;
+        if (e.unlockPin != null) m['unlockPin'] = e.unlockPin;
+        if (e.unlockPattern != null) m['unlockPattern'] = e.unlockPattern;
         return m;
       }).toList();
     }
@@ -187,5 +195,9 @@ class OrderService {
     return (response.data as List)
         .map((e) => OrderPhoto.fromJson(e))
         .toList();
+  }
+
+  Future<void> deleteOrder(String orderId) async {
+    await _api.dio.delete('/orders/$orderId');
   }
 }

@@ -17,6 +17,10 @@ class OrderEquipment {
   final String? technicianId;
   final double laborCost;
   final int warrantyDays;
+  final String? paymentMethod;
+  final String? unlockPassword;
+  final String? unlockPin;
+  final String? unlockPattern;
   final DateTime? deliveredAt;
   final DateTime? closedAt;
   final DateTime createdAt;
@@ -37,6 +41,10 @@ class OrderEquipment {
     this.technicianId,
     this.laborCost = 0,
     this.warrantyDays = 0,
+    this.paymentMethod,
+    this.unlockPassword,
+    this.unlockPin,
+    this.unlockPattern,
     this.deliveredAt,
     this.closedAt,
     required this.createdAt,
@@ -61,6 +69,10 @@ class OrderEquipment {
       technicianId: json['technicianId'],
       laborCost: double.tryParse('${json['laborCost']}') ?? 0,
       warrantyDays: json['warrantyDays'] ?? 0,
+      paymentMethod: json['paymentMethod'],
+      unlockPassword: json['unlockPassword'],
+      unlockPin: json['unlockPin'],
+      unlockPattern: json['unlockPattern'],
       deliveredAt: json['deliveredAt'] != null
           ? DateTime.parse(json['deliveredAt'])
           : null,
@@ -103,6 +115,7 @@ class ServiceOrder {
   final double total;
   final int warrantyDays;
   final String? pdfUrl;
+  final bool requiresClientSignature;
   final DateTime createdAt;
   final DateTime? deliveredAt;
   final DateTime? closedAt;
@@ -128,6 +141,7 @@ class ServiceOrder {
     this.total = 0,
     this.warrantyDays = 0,
     this.pdfUrl,
+    this.requiresClientSignature = true,
     required this.createdAt,
     this.deliveredAt,
     this.closedAt,
@@ -158,6 +172,7 @@ class ServiceOrder {
       total: double.tryParse('${json['total']}') ?? 0,
       warrantyDays: json['warrantyDays'] ?? 0,
       pdfUrl: json['pdfUrl'],
+      requiresClientSignature: json['requiresClientSignature'] ?? true,
       createdAt: DateTime.parse(json['createdAt']),
       deliveredAt: json['deliveredAt'] != null
           ? DateTime.parse(json['deliveredAt'])

@@ -36,6 +36,9 @@ class EquipmentData {
   final List<String>? accessories;
   final List<File>? photos;
   final String? technicianId;
+  final String? unlockPassword;
+  final String? unlockPin;
+  final String? unlockPattern;
 
   EquipmentData({
     required this.deviceType,
@@ -47,6 +50,9 @@ class EquipmentData {
     this.accessories,
     this.photos,
     this.technicianId,
+    this.unlockPassword,
+    this.unlockPin,
+    this.unlockPattern,
   });
 }
 
@@ -54,15 +60,25 @@ class OrderCreateRequested extends OrdersEvent {
   final String customerId;
   final List<EquipmentData> equipments;
   final List<File>? photos; // photos for single device (backward compat)
+  final bool requiresClientSignature;
 
   OrderCreateRequested({
     required this.customerId,
     required this.equipments,
     this.photos,
+    this.requiresClientSignature = true,
   });
 
   @override
   List<Object?> get props => [customerId, equipments.length];
+}
+
+class OrderDeleteRequested extends OrdersEvent {
+  final String orderId;
+  OrderDeleteRequested(this.orderId);
+
+  @override
+  List<Object?> get props => [orderId];
 }
 
 class OrderStatusUpdateRequested extends OrdersEvent {
@@ -110,6 +126,14 @@ class OrderCreated extends OrdersState {
   List<Object?> get props => [order.id];
 }
 
+class OrderDeleted extends OrdersState {
+  final String orderId;
+  OrderDeleted(this.orderId);
+
+  @override
+  List<Object?> get props => [orderId];
+}
+
 class OrdersError extends OrdersState {
   final String message;
   OrdersError(this.message);
@@ -126,6 +150,7 @@ class OrdersBloc extends Bloc<OrdersEvent, OrdersState> {
     on<OrdersLoadRequested>(_onLoadRequested);
     on<OrderCreateRequested>(_onCreateRequested);
     on<OrderStatusUpdateRequested>(_onStatusUpdateRequested);
+    on<OrderDeleteRequested>(_onDeleteRequested);
   }
 
   Future<void> _onLoadRequested(
@@ -171,6 +196,7 @@ class OrdersBloc extends Bloc<OrdersEvent, OrdersState> {
         customerId: event.customerId,
         equipments: event.equipments,
         photos: event.photos,
+        requiresClientSignature: event.requiresClientSignature,
       );
       emit(OrderCreated(order));
     } catch (e) {
@@ -193,6 +219,18 @@ class OrdersBloc extends Bloc<OrdersEvent, OrdersState> {
       add(OrdersLoadRequested());
     } catch (e) {
       emit(OrdersError('Error al actualizar estado'));
+    }
+  }
+
+  Future<void> _onDeleteRequested(
+    OrderDeleteRequested event,
+    Emitter<OrdersState> emit,
+  ) async {
+    try {
+      await _orderService.deleteOrder(event.orderId);
+      emit(OrderDeleted(event.orderId));
+    } catch (e) {
+      emit(OrdersError('Error al eliminar la orden'));
     }
   }
 }

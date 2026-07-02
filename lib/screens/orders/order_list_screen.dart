@@ -123,6 +123,38 @@ class _OrderListScreenState extends State<OrderListScreen> {
     }
   }
 
+  Future<void> _confirmDeleteOrder(BuildContext context, String orderId, String orderNumber) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor,
+        title: Row(children: [
+          Icon(Icons.delete_rounded, color: AppTheme.accentRed, size: 22),
+          SizedBox(width: 10),
+          Text('Eliminar orden', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
+        ]),
+        content: Text(
+          'Orden $orderNumber\n\nEsta orden se ocultara de la lista. ¿Desea continuar?',
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentRed),
+            child: Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      context.read<OrdersBloc>().add(OrderDeleteRequested(orderId));
+    }
+  }
+
   Future<void> _printActasBatch(List<ServiceOrder> orders) async {
     final delivered = orders
         .where((o) => o.status == 'delivered')
@@ -413,7 +445,17 @@ class _OrderListScreenState extends State<OrderListScreen> {
           ),
         // List
         Expanded(
-          child: BlocBuilder<OrdersBloc, OrdersState>(
+          child: BlocConsumer<OrdersBloc, OrdersState>(
+            listener: (context, state) {
+              if (state is OrderDeleted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('Orden eliminada'),
+                  backgroundColor: AppTheme.accentRed,
+                  duration: Duration(seconds: 2),
+                ));
+                _loadOrders();
+              }
+            },
             builder: (context, state) {
               if (state is OrdersLoading) {
                 return Center(
@@ -503,6 +545,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                       final order = state.orders[i];
                       final color = statusColor(order.status);
                       return GestureDetector(
+                        onLongPress: () => _confirmDeleteOrder(context, order.id, order.orderNumber),
                         onTap: () {
                           Navigator.push(
                             context,

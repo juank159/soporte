@@ -28,6 +28,9 @@ class _DeviceEntry {
   List<String> accessories;
   String problem;
   List<File> photos;
+  // null = ninguno, 'password' = contraseña, 'pin' = PIN, 'pattern' = patrón
+  String? unlockType;
+  String? unlockValue;
 
   _DeviceEntry({
     required this.typeName,
@@ -39,6 +42,8 @@ class _DeviceEntry {
     required this.accessories,
     required this.problem,
     required this.photos,
+    this.unlockType,
+    this.unlockValue,
   });
 
   String get summary => '$typeName $brandName $model';
@@ -92,6 +97,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   // Technician (global, one per order)
   List<Map<String, dynamic>> _technicians = [];
   String? _selectedTechnicianId;
+
+  // Unlock credentials for current device form
+  String? _unlockType; // null / 'password' / 'pin' / 'pattern'
+  final _unlockValueCtrl = TextEditingController();
+
+  // Requires client signature (step 3)
+  bool _requiresClientSignature = true;
 
   final _imagePicker = ImagePicker();
   final _customerService = CustomerService();
@@ -158,6 +170,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     _deviceColorCtrl.dispose();
     _accessoriesCtrl.dispose();
     _problemCtrl.dispose();
+    _unlockValueCtrl.dispose();
     super.dispose();
   }
 
@@ -246,6 +259,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       accessories: accessories,
       problem: _problemCtrl.text.trim(),
       photos: List<File>.from(_photos),
+      unlockType: _unlockType,
+      unlockValue: _unlockValueCtrl.text.trim().isNotEmpty ? _unlockValueCtrl.text.trim() : null,
     );
 
     setState(() {
@@ -280,6 +295,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
       _problemCtrl.text = d.problem;
       _photos.clear();
       _photos.addAll(d.photos);
+      _unlockType = d.unlockType;
+      _unlockValueCtrl.text = d.unlockValue ?? '';
       _showDeviceForm = true;
       _expandedDevice = null;
     });
@@ -294,7 +311,15 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     _accessoriesCtrl.clear();
     _problemCtrl.clear();
     _photos.clear();
+    _unlockType = null;
+    _unlockValueCtrl.clear();
     _editingIndex = null;
+  }
+
+  bool _isPrinter(String? typeName) {
+    if (typeName == null) return false;
+    return typeName.toLowerCase().contains('impresora') ||
+        typeName.toLowerCase().contains('printer');
   }
 
   Future<void> _createOrders() async {
@@ -335,22 +360,35 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
 
     if (!mounted) return;
 
-    final equipmentList = _devices.map((d) => EquipmentData(
-      deviceType: d.typeName,
-      deviceBrand: d.brandName,
-      deviceModel: d.model,
-      problemReported: d.problem,
-      deviceSerial: d.serial,
-      deviceColor: d.color,
-      accessories: d.accessories.isNotEmpty ? d.accessories : null,
-      photos: d.photos.isNotEmpty ? d.photos : null,
-      technicianId: _selectedTechnicianId,
-    )).toList();
+    final equipmentList = _devices.map((d) {
+      String? unlockPassword;
+      String? unlockPin;
+      String? unlockPattern;
+      if (d.unlockType == 'password') unlockPassword = d.unlockValue;
+      if (d.unlockType == 'pin') unlockPin = d.unlockValue;
+      if (d.unlockType == 'pattern') unlockPattern = d.unlockValue;
+
+      return EquipmentData(
+        deviceType: d.typeName,
+        deviceBrand: d.brandName,
+        deviceModel: d.model,
+        problemReported: d.problem,
+        deviceSerial: d.serial,
+        deviceColor: d.color,
+        accessories: d.accessories.isNotEmpty ? d.accessories : null,
+        photos: d.photos.isNotEmpty ? d.photos : null,
+        technicianId: _selectedTechnicianId,
+        unlockPassword: unlockPassword,
+        unlockPin: unlockPin,
+        unlockPattern: unlockPattern,
+      );
+    }).toList();
 
     context.read<OrdersBloc>().add(OrderCreateRequested(
       customerId: customerId,
       equipments: equipmentList,
       photos: _devices.length == 1 && _devices[0].photos.isNotEmpty ? _devices[0].photos : null,
+      requiresClientSignature: _requiresClientSignature,
     ));
   }
 
@@ -568,19 +606,19 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
           avatar: const Icon(Icons.search_rounded, size: 16),
           label: const Text('Buscar'),
           selected: _customerMode == 0,
-          onSelected: (_) => setState(() => _customerMode = 0),
+          onSelected: (_) => setState(() { _customerMode = 0; _requiresClientSignature = true; }),
         ),
         ChoiceChip(
           avatar: Icon(Icons.person_add_rounded, size: 16),
           label: Text('Nuevo'),
           selected: _customerMode == 1,
-          onSelected: (_) => setState(() => _customerMode = 1),
+          onSelected: (_) => setState(() { _customerMode = 1; _requiresClientSignature = true; }),
         ),
         ChoiceChip(
           avatar: Icon(Icons.flash_on_rounded, size: 16),
           label: Text('Express'),
           selected: _customerMode == 2,
-          onSelected: (_) => setState(() => _customerMode = 2),
+          onSelected: (_) => setState(() { _customerMode = 2; _requiresClientSignature = false; }),
         ),
       ]),
       SizedBox(height: 16),
@@ -737,6 +775,68 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
         ),
         const SizedBox(height: 12),
 
+        // Unlock credentials (not for printers)
+        if (_selectedType != null && !_isPrinter(_selectedType!.name)) ...[
+          const SizedBox(height: 4),
+          Text('Acceso al dispositivo',
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ChoiceChip(
+                label: Text('Ninguno'),
+                selected: _unlockType == null,
+                onSelected: (_) => setState(() { _unlockType = null; _unlockValueCtrl.clear(); }),
+              ),
+              ChoiceChip(
+                avatar: Icon(Icons.lock_rounded, size: 14,
+                    color: _unlockType == 'password' ? AppTheme.accentCyan : AppTheme.textSecondary),
+                label: Text('Contrasena'),
+                selected: _unlockType == 'password',
+                onSelected: (_) => setState(() => _unlockType = 'password'),
+              ),
+              ChoiceChip(
+                avatar: Icon(Icons.pin_rounded, size: 14,
+                    color: _unlockType == 'pin' ? AppTheme.accentGreen : AppTheme.textSecondary),
+                label: Text('PIN'),
+                selected: _unlockType == 'pin',
+                onSelected: (_) => setState(() => _unlockType = 'pin'),
+              ),
+              ChoiceChip(
+                avatar: Icon(Icons.gesture_rounded, size: 14,
+                    color: _unlockType == 'pattern' ? AppTheme.accentPurple : AppTheme.textSecondary),
+                label: Text('Patron'),
+                selected: _unlockType == 'pattern',
+                onSelected: (_) => setState(() => _unlockType = 'pattern'),
+              ),
+            ],
+          ),
+          if (_unlockType != null) ...[
+            const SizedBox(height: 10),
+            TextField(
+              controller: _unlockValueCtrl,
+              style: TextStyle(color: AppTheme.textPrimary),
+              keyboardType: _unlockType == 'pin'
+                  ? TextInputType.number
+                  : TextInputType.text,
+              decoration: InputDecoration(
+                labelText: _unlockType == 'password'
+                    ? 'Contrasena del dispositivo'
+                    : _unlockType == 'pin'
+                        ? 'PIN (numeros)'
+                        : 'Descripcion del patron (ej: L, Z, flecha derecha)',
+                prefixIcon: Icon(
+                  _unlockType == 'password' ? Icons.lock_rounded :
+                  _unlockType == 'pin' ? Icons.pin_rounded : Icons.gesture_rounded,
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+        ],
+
         // Photos
         Row(children: [
           Text('Fotos (opcional)',
@@ -875,6 +975,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               if (device.color != null) _detailRow('Color', device.color!),
               _detailRow('Accesorios', device.accessories.join(', ')),
               _detailRow('Problema', device.problem),
+              if (device.unlockType != null && device.unlockValue != null) ...[
+                _detailRow(
+                  device.unlockType == 'password' ? 'Contrasena' :
+                  device.unlockType == 'pin' ? 'PIN' : 'Patron',
+                  device.unlockValue!,
+                ),
+              ],
               if (device.photos.isNotEmpty) ...[
                 const SizedBox(height: 6),
                 Wrap(
@@ -1042,6 +1149,33 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
             ),
           ]),
         ),
+
+      // Signature toggle
+      GlassCard(
+        borderColor: AppTheme.accentOrange.withValues(alpha: 0.3),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(children: [
+          Icon(Icons.draw_rounded, color: AppTheme.accentOrange, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('El cliente firma el acta',
+                  style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
+              Text(
+                _requiresClientSignature
+                    ? 'Se pedira firma del cliente en la entrega'
+                    : 'Sin firma de cliente (Express / mensajero)',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+              ),
+            ]),
+          ),
+          Switch(
+            value: _requiresClientSignature,
+            onChanged: (v) => setState(() => _requiresClientSignature = v),
+            activeColor: AppTheme.accentGreen,
+          ),
+        ]),
+      ),
     ]);
   }
 
