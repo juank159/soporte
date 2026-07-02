@@ -76,16 +76,23 @@ class PdfGeneratorService {
       for (final eq in order.equipments) {
         if (eq.status != 'ready' && eq.status != 'delivered') continue;
         if (eq.laborCost <= 0) continue;
-        final eqPayment = _extractPaymentFromHistory(history, eq);
+        final eqPayment = _resolvePayment(eq.paymentMethod, history, eq);
+        final eqWarrantyMonths = (eq.warrantyDays / 30).round();
+        final eqWarrantyText = eq.warrantyDays > 0 && eqWarrantyMonths > 0
+            ? '$eqWarrantyMonths mes(es)'
+            : 'Sin garantia';
         costRows.add(pw.Padding(
-          padding: const pw.EdgeInsets.only(bottom: 3),
+          padding: const pw.EdgeInsets.only(bottom: 5),
           child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
             pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-              pw.Text('${eq.deviceBrand} ${eq.deviceModel}', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-              pw.Text('\$${_formatMoney(eq.laborCost)}', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+              pw.Text('${eq.deviceBrand} ${eq.deviceModel}',
+                  style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+              pw.Text('\$${_formatMoney(eq.laborCost)}',
+                  style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
             ]),
             if (eqPayment.isNotEmpty)
-              pw.Text('Pago: $eqPayment', style: const pw.TextStyle(fontSize: 8)),
+              pw.Text('Pago: $eqPayment  |  Garantia: $eqWarrantyText',
+                  style: const pw.TextStyle(fontSize: 8)),
           ]),
         ));
       }
@@ -206,21 +213,34 @@ class PdfGeneratorService {
     return pdf.save();
   }
 
-  String _extractPaymentFromHistory(List<Map<String, dynamic>>? history, OrderEquipment eq) {
+  String _resolvePayment(String? directMethod, List<Map<String, dynamic>>? history, OrderEquipment eq) {
+    // Prefer direct stored method; humanize legacy codes
+    if (directMethod != null && directMethod.isNotEmpty) {
+      return _humanizePayment(directMethod);
+    }
+    // Fallback: parse from history notes (old orders)
     if (history == null) return '';
-    final eqLabel = '${eq.deviceType} ${eq.deviceBrand} ${eq.deviceModel}';
     for (final h in history.reversed) {
       final notes = h['notes'] as String? ?? '';
       final toStatus = h['toStatus'] as String? ?? '';
       if (toStatus != 'delivered' || !notes.contains('Entregado por')) continue;
-      if (notes.contains(eqLabel) || !notes.contains('[')) {
-        if (notes.contains('Efectivo')) return 'Efectivo';
-        if (notes.contains('Transferencia')) return 'Transferencia';
-        if (notes.contains('Tarjeta de Credito')) return 'T. Credito';
-        if (notes.contains('Tarjeta de Debito')) return 'T. Debito';
-      }
+      if (notes.contains('Efectivo')) return 'Efectivo';
+      if (notes.contains('Transferencia')) return 'Transferencia';
+      if (notes.contains('Tarjeta de Credito')) return 'T. Credito';
+      if (notes.contains('Tarjeta de Debito')) return 'T. Debito';
     }
     return '';
+  }
+
+  String _humanizePayment(String method) {
+    switch (method.toLowerCase()) {
+      case 'efectivo': return 'Efectivo';
+      case 'transferencia': return 'Transferencia';
+      case 'tarjeta_credito': return 'Tarjeta de Credito';
+      case 'tarjeta_debito': return 'Tarjeta de Debito';
+      case 'adi': return 'ADI';
+      default: return method; // dynamic tenant methods return as-is
+    }
   }
 
   List<pw.Widget> _buildEquipmentBlock(int number, OrderEquipment eq, bool isSingle) {
@@ -228,6 +248,14 @@ class PdfGeneratorService {
     if (eq.notes != null && eq.notes!.isNotEmpty && !eq.notes!.startsWith('Entregado por')) {
       repairNotes = eq.notes;
     }
+    final payment = eq.paymentMethod != null && eq.paymentMethod!.isNotEmpty
+        ? _humanizePayment(eq.paymentMethod!)
+        : null;
+    final warrantyMonths = (eq.warrantyDays / 30).round();
+    final warrantyText = eq.warrantyDays > 0 && warrantyMonths > 0
+        ? '$warrantyMonths mes(es)'
+        : null;
+
     return [
       pw.Container(
         padding: const pw.EdgeInsets.all(8),
@@ -246,6 +274,8 @@ class PdfGeneratorService {
               if (eq.deviceSerial != null) _tableRow('Serial', eq.deviceSerial!),
               if (eq.deviceColor != null) _tableRow('Color', eq.deviceColor!),
               if (eq.accessories != null && eq.accessories!.isNotEmpty) _tableRow('Accesorios', eq.accessories!.join(', ')),
+              if (payment != null) _tableRow('Metodo pago', payment),
+              if (warrantyText != null) _tableRow('Garantia', warrantyText),
             ],
           ),
           pw.SizedBox(height: 4),

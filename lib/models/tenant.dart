@@ -12,6 +12,9 @@ class Tenant {
   final int warrantyDays;
   final String? warrantyConditions;
   final String? legalNotice;
+  final List<String> paymentMethods;
+
+  static const _defaultPaymentMethods = ['Efectivo', 'Transferencia', 'Tarjeta Credito', 'Tarjeta Debito'];
 
   Tenant({
     required this.id,
@@ -27,9 +30,14 @@ class Tenant {
     this.warrantyDays = 30,
     this.warrantyConditions,
     this.legalNotice,
-  });
+    List<String>? paymentMethods,
+  }) : paymentMethods = paymentMethods ?? _defaultPaymentMethods;
 
   factory Tenant.fromJson(Map<String, dynamic> json) {
+    List<String>? methods;
+    if (json['paymentMethods'] != null) {
+      methods = (json['paymentMethods'] as List).cast<String>();
+    }
     return Tenant(
       id: json['id'],
       name: json['name'],
@@ -44,6 +52,7 @@ class Tenant {
       warrantyDays: json['warrantyDays'] ?? 30,
       warrantyConditions: json['warrantyConditions'],
       legalNotice: json['legalNotice'],
+      paymentMethods: methods,
     );
   }
 }

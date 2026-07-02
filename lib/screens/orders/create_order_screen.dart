@@ -16,6 +16,7 @@ import '../../services/ticket_printer_service.dart';
 import '../../models/tenant.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/ticket_preview_widget.dart';
+import '../../widgets/pattern_draw_widget.dart';
 
 /// Holds all data for one device being added to the order
 class _DeviceEntry {
@@ -813,7 +814,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               ),
             ],
           ),
-          if (_unlockType != null) ...[
+          if (_unlockType == 'password' || _unlockType == 'pin') ...[
             const SizedBox(height: 10),
             TextField(
               controller: _unlockValueCtrl,
@@ -824,13 +825,19 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
               decoration: InputDecoration(
                 labelText: _unlockType == 'password'
                     ? 'Contrasena del dispositivo'
-                    : _unlockType == 'pin'
-                        ? 'PIN (numeros)'
-                        : 'Descripcion del patron (ej: L, Z, flecha derecha)',
+                    : 'PIN (solo numeros)',
                 prefixIcon: Icon(
-                  _unlockType == 'password' ? Icons.lock_rounded :
-                  _unlockType == 'pin' ? Icons.pin_rounded : Icons.gesture_rounded,
+                  _unlockType == 'password' ? Icons.lock_rounded : Icons.pin_rounded,
                 ),
+              ),
+            ),
+          ],
+          if (_unlockType == 'pattern') ...[
+            const SizedBox(height: 12),
+            Center(
+              child: PatternDrawWidget(
+                initialPattern: _unlockValueCtrl.text.isNotEmpty ? _unlockValueCtrl.text : null,
+                onPatternChanged: (p) => setState(() => _unlockValueCtrl.text = p ?? ''),
               ),
             ),
           ],

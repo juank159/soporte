@@ -43,14 +43,15 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
   final _totalCtrl = TextEditingController(); // used only for single-device
   final _warrantyMonthsCtrl = TextEditingController();
 
-  // Single-device: one global payment method
+  // Single-device: one global payment method and warranty
   String? _paymentMethod;
+  bool? _hasWarranty;
 
-  // Multi-device: per-equipment payment method and value
+  // Multi-device: per-equipment payment method, value, and warranty
   final Map<String, String?> _equipmentPaymentMethod = {};
   final Map<String, TextEditingController> _equipmentValueCtrl = {};
-
-  bool? _hasWarranty; // null = not selected yet
+  final Map<String, bool?> _equipmentHasWarranty = {};
+  final Map<String, TextEditingController> _equipmentWarrantyCtrl = {};
 
   // Whether this order requires client signature
   bool get _requiresClientSignature => widget.order.requiresClientSignature;
@@ -89,9 +90,12 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
     _loadTechnicians();
     // Initialize per-equipment controllers for multi-device
     for (final eq in _readyEquipments) {
-      _equipmentValueCtrl[eq.id] = TextEditingController();
-      _equipmentValueCtrl[eq.id]!.addListener(() => setState(() {}));
+      _equipmentValueCtrl[eq.id] = TextEditingController()
+        ..addListener(() => setState(() {}));
       _equipmentPaymentMethod[eq.id] = null;
+      _equipmentHasWarranty[eq.id] = null;
+      _equipmentWarrantyCtrl[eq.id] = TextEditingController()
+        ..addListener(() => setState(() {}));
     }
     // Rebuild when text fields change so _canGenerate updates
     _totalCtrl.addListener(() => setState(() {}));
@@ -104,9 +108,8 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
     _clientNameCtrl.dispose();
     _totalCtrl.dispose();
     _warrantyMonthsCtrl.dispose();
-    for (final ctrl in _equipmentValueCtrl.values) {
-      ctrl.dispose();
-    }
+    for (final ctrl in _equipmentValueCtrl.values) ctrl.dispose();
+    for (final ctrl in _equipmentWarrantyCtrl.values) ctrl.dispose();
     super.dispose();
   }
 
@@ -160,17 +163,20 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
     if (_assignedTechnician == null) return false;
     if (_technicianSignature == null) return false;
     if (_requiresClientSignature && _clientSignature == null) return false;
-    if (_hasWarranty == null) return false;
-    if (_hasWarranty == true && _warrantyMonthsCtrl.text.isEmpty) return false;
 
     if (_isMultiDevice) {
       for (final eq in _readyEquipments) {
         if (_equipmentValueCtrl[eq.id]?.text.isEmpty ?? true) return false;
         if (_equipmentPaymentMethod[eq.id] == null) return false;
+        if (_equipmentHasWarranty[eq.id] == null) return false;
+        if (_equipmentHasWarranty[eq.id] == true &&
+            (_equipmentWarrantyCtrl[eq.id]?.text.isEmpty ?? true)) return false;
       }
     } else {
       if (_totalCtrl.text.isEmpty) return false;
       if (_paymentMethod == null) return false;
+      if (_hasWarranty == null) return false;
+      if (_hasWarranty == true && _warrantyMonthsCtrl.text.isEmpty) return false;
     }
 
     return true;
@@ -182,16 +188,11 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
     setState(() => _generating = true);
 
     try {
-      final warrantyMonths = int.tryParse(_warrantyMonthsCtrl.text.trim()) ?? 1;
-      final warrantyDays = _hasWarranty == true ? warrantyMonths * 30 : 0;
-      final warrantyLabel = _hasWarranty == true ? '$warrantyMonths meses' : 'Sin garantia';
-
       double totalValue;
       List<OrderEquipment> readyEquipments;
 
       if (_isMultiDevice) {
         readyEquipments = _readyEquipments;
-        // Total = sum of per-equipment values
         totalValue = 0;
         for (final eq in readyEquipments) {
           totalValue += parseFormattedMoney(_equipmentValueCtrl[eq.id]!.text.trim());
@@ -201,13 +202,15 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         totalValue = parseFormattedMoney(_totalCtrl.text.trim());
       }
 
-      // Sum new value to existing total
       final newTotal = widget.order.total + totalValue;
 
       try {
+        final globalWarrantyDays = _isMultiDevice
+            ? widget.order.warrantyDays
+            : (_hasWarranty == true ? (int.tryParse(_warrantyMonthsCtrl.text.trim()) ?? 1) * 30 : 0);
         await _api.dio.patch('/orders/${widget.order.id}/delivery-info', data: {
           'total': newTotal,
-          'warrantyDays': _isMultiDevice ? widget.order.warrantyDays : warrantyDays,
+          'warrantyDays': globalWarrantyDays,
         });
       } catch (_) {}
 
@@ -215,24 +218,30 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         for (final eq in readyEquipments) {
           final eqValue = parseFormattedMoney(_equipmentValueCtrl[eq.id]!.text.trim());
           final eqPayment = _equipmentPaymentMethod[eq.id]!;
-          final paymentLabel = _paymentMethodLabel(eqPayment);
+          final eqHasWarranty = _equipmentHasWarranty[eq.id] == true;
+          final eqWarrantyMonths = eqHasWarranty
+              ? (int.tryParse(_equipmentWarrantyCtrl[eq.id]!.text.trim()) ?? 1)
+              : 0;
+          final eqWarrantyDays = eqHasWarranty ? eqWarrantyMonths * 30 : 0;
+          final eqWarrantyLabel = eqHasWarranty ? '$eqWarrantyMonths mes(es)' : 'Sin garantia';
           final deliveryNote =
-              'Entregado por \$${_equipmentValueCtrl[eq.id]!.text.trim()} - $paymentLabel - Garantia: $warrantyLabel';
+              'Entregado por \$${_equipmentValueCtrl[eq.id]!.text.trim()} - $eqPayment - Garantia: $eqWarrantyLabel';
           try {
             await _api.dio.patch('/orders/${widget.order.id}/equipments/${eq.id}/status', data: {
               'status': 'delivered',
               'notes': deliveryNote,
-              'warrantyDays': warrantyDays,
+              'warrantyDays': eqWarrantyDays,
               'laborCost': eqValue,
               'paymentMethod': eqPayment,
             });
           } catch (_) {}
         }
       } else {
-        // Single device order - change order status directly
-        final paymentLabel = _paymentMethodLabel(_paymentMethod!);
+        final warrantyMonths = int.tryParse(_warrantyMonthsCtrl.text.trim()) ?? 1;
+        final warrantyDays = _hasWarranty == true ? warrantyMonths * 30 : 0;
+        final warrantyLabel = _hasWarranty == true ? '$warrantyMonths mes(es)' : 'Sin garantia';
         final deliveryNote =
-            'Entregado por \$${_totalCtrl.text.trim()} - $paymentLabel - Garantia: $warrantyLabel';
+            'Entregado por \$${_totalCtrl.text.trim()} - ${_paymentMethod!} - Garantia: $warrantyLabel';
         try {
           await _api.dio.patch('/orders/${widget.order.id}/status', data: {
             'status': 'delivered',
@@ -332,13 +341,12 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
       // Build payment method label for PDF
       String pdfPaymentLabel;
       if (_isMultiDevice) {
-        final labels = _readyEquipments
-            .map((eq) => _paymentMethodLabel(_equipmentPaymentMethod[eq.id] ?? ''))
+        pdfPaymentLabel = _readyEquipments
+            .map((eq) => _equipmentPaymentMethod[eq.id] ?? '')
             .toSet()
             .join(' / ');
-        pdfPaymentLabel = labels;
       } else {
-        pdfPaymentLabel = _paymentMethodLabel(_paymentMethod!);
+        pdfPaymentLabel = _paymentMethod!;
       }
 
       final pdfBytes = await _pdfService.generateDeliveryAct(
@@ -369,41 +377,56 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
     }
   }
 
-  String _paymentMethodLabel(String method) {
-    switch (method) {
-      case 'efectivo': return 'Efectivo';
-      case 'transferencia': return 'Transferencia';
-      case 'tarjeta_credito': return 'Tarjeta de Credito';
-      case 'tarjeta_debito': return 'Tarjeta de Debito';
-      case 'adi': return 'ADI';
-      default: return method;
-    }
-  }
-
   Widget _paymentMethodSelector({
     required String? selected,
     required ValueChanged<String> onSelected,
   }) {
-    final methods = [
-      ('efectivo', 'Efectivo', Icons.money_rounded, AppTheme.accentGreen),
-      ('transferencia', 'Transferencia', Icons.swap_horiz_rounded, AppTheme.accentBlue),
-      ('tarjeta_credito', 'T. Credito', Icons.credit_card_rounded, AppTheme.accentPurple),
-      ('tarjeta_debito', 'T. Debito', Icons.credit_card_rounded, AppTheme.accentCyan),
-      ('adi', 'ADI', Icons.account_balance_rounded, AppTheme.accentOrange),
-    ];
+    final methods = widget.tenant.paymentMethods;
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: methods.map((m) {
-        final (key, label, icon, color) = m;
-        return ChoiceChip(
-          avatar: Icon(icon, size: 14, color: selected == key ? color : AppTheme.textSecondary),
-          label: Text(label),
-          selected: selected == key,
-          onSelected: (_) => onSelected(key),
-        );
-      }).toList(),
+      children: methods.map((m) => ChoiceChip(
+        label: Text(m, style: const TextStyle(fontSize: 13)),
+        selected: selected == m,
+        onSelected: (_) => onSelected(m),
+      )).toList(),
     );
+  }
+
+  Widget _warrantyRow({
+    required bool? hasWarranty,
+    required ValueChanged<bool?> onWarrantyChanged,
+    required TextEditingController monthsCtrl,
+  }) {
+    return Row(children: [
+      ChoiceChip(
+        label: const Text('Si'),
+        selected: hasWarranty == true,
+        onSelected: (_) => onWarrantyChanged(true),
+      ),
+      const SizedBox(width: 8),
+      ChoiceChip(
+        label: const Text('No'),
+        selected: hasWarranty == false,
+        onSelected: (_) => onWarrantyChanged(false),
+      ),
+      if (hasWarranty == true) ...[
+        const SizedBox(width: 16),
+        SizedBox(
+          width: 100,
+          child: TextField(
+            controller: monthsCtrl,
+            style: TextStyle(color: AppTheme.textPrimary),
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            decoration: const InputDecoration(
+              labelText: 'Meses',
+              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            ),
+          ),
+        ),
+      ],
+    ]);
   }
 
   void _finish() {
@@ -508,7 +531,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                   ),
                 ],
 
-                // Multi-device: per-equipment value + payment
+                // Multi-device: per-equipment value + payment + warranty
                 if (_isMultiDevice) ...[
                   if (_readyEquipments.isEmpty)
                     Padding(
@@ -517,9 +540,9 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                           style: TextStyle(color: AppTheme.accentOrange, fontSize: 13)),
                     )
                   else ...[
-                    Text('Valor y pago por equipo:',
+                    Text('Valor, pago y garantia por equipo:',
                         style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
                     ..._readyEquipments.map((eq) => Container(
                       margin: const EdgeInsets.only(bottom: 16),
                       padding: const EdgeInsets.all(12),
@@ -530,75 +553,67 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                       ),
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Row(children: [
-                          Icon(Icons.devices_rounded, size: 14, color: AppTheme.accentCyan),
-                          SizedBox(width: 6),
+                          const Icon(Icons.devices_rounded, size: 14, color: AppTheme.accentCyan),
+                          const SizedBox(width: 6),
                           Expanded(
                             child: Text(eq.summary,
-                                style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
+                                style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
                           ),
                         ]),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
                         TextField(
                           controller: _equipmentValueCtrl[eq.id],
                           style: TextStyle(color: AppTheme.textPrimary),
                           keyboardType: TextInputType.number,
                           inputFormatters: [ThousandSeparatorFormatter()],
-                          decoration: InputDecoration(
+                          decoration: const InputDecoration(
                             labelText: 'Valor de este servicio *',
                             prefixText: '\$ ',
                             prefixIcon: Icon(Icons.payments_rounded, size: 18),
                             contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           ),
                         ),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
                         Text('Pago: *', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                        SizedBox(height: 6),
+                        const SizedBox(height: 6),
                         _paymentMethodSelector(
                           selected: _equipmentPaymentMethod[eq.id],
                           onSelected: (v) => setState(() => _equipmentPaymentMethod[eq.id] = v),
                         ),
+                        const SizedBox(height: 10),
+                        Text('Garantia: *', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                        const SizedBox(height: 6),
+                        _warrantyRow(
+                          hasWarranty: _equipmentHasWarranty[eq.id],
+                          onWarrantyChanged: (v) => setState(() => _equipmentHasWarranty[eq.id] = v),
+                          monthsCtrl: _equipmentWarrantyCtrl[eq.id]!,
+                        ),
                       ]),
                     )),
-                    // Total computed
                     Divider(color: AppTheme.dividerColor),
                     Row(children: [
                       Text('Total calculado:',
                           style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
-                      Spacer(),
+                      const Spacer(),
                       Text(
                         '\$ ${formatMoney(_multiDeviceTotal)}',
-                        style: TextStyle(color: AppTheme.accentGreen, fontWeight: FontWeight.w800, fontSize: 16),
+                        style: const TextStyle(color: AppTheme.accentGreen, fontWeight: FontWeight.w800, fontSize: 16),
                       ),
                     ]),
                   ],
                 ],
 
-                SizedBox(height: 16),
-                Text('Garantia: *', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-                const SizedBox(height: 8),
-                Row(children: [
-                  ChoiceChip(label: Text('Si'), selected: _hasWarranty == true,
-                      onSelected: (_) => setState(() => _hasWarranty = true)),
-                  SizedBox(width: 8),
-                  ChoiceChip(label: Text('No'), selected: _hasWarranty == false,
-                      onSelected: (_) => setState(() => _hasWarranty = false)),
-                  if (_hasWarranty == true) ...[
-                    SizedBox(width: 16),
-                    SizedBox(
-                      width: 100,
-                      child: TextField(
-                        controller: _warrantyMonthsCtrl,
-                        style: TextStyle(color: AppTheme.textPrimary),
-                        keyboardType: TextInputType.number,
-                        textAlign: TextAlign.center,
-                        decoration: const InputDecoration(
-                          labelText: 'Meses',
-                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                        ),
-                      ),
-                    ),
-                  ],
-                ]),
+                // Single-device global warranty
+                if (!_isMultiDevice) ...[
+                  const SizedBox(height: 16),
+                  Text('Garantia: *', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  _warrantyRow(
+                    hasWarranty: _hasWarranty,
+                    onWarrantyChanged: (v) => setState(() => _hasWarranty = v),
+                    monthsCtrl: _warrantyMonthsCtrl,
+                  ),
+                ],
               ],
             ),
           ),
@@ -885,25 +900,23 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                _hasWarranty == null
-                    ? 'Seleccione si tiene garantia (Si/No)'
-                    : (!_isMultiDevice && _totalCtrl.text.isEmpty)
-                        ? 'Ingrese el valor del servicio'
-                        : (!_isMultiDevice && _paymentMethod == null)
-                            ? 'Seleccione el metodo de pago'
-                            : (_isMultiDevice && _readyEquipments.any((e) =>
-                                  _equipmentValueCtrl[e.id]?.text.isEmpty ?? true))
-                                ? 'Ingrese el valor para cada equipo'
-                                : (_isMultiDevice && _readyEquipments.any((e) =>
-                                      _equipmentPaymentMethod[e.id] == null))
-                                    ? 'Seleccione metodo de pago para cada equipo'
-                                    : _assignedTechnician == null
-                                        ? 'Seleccione el tecnico'
-                                        : (_requiresClientSignature && _clientSignature == null)
-                                            ? 'Se requiere firma del cliente'
-                                            : _technicianSignature == null
-                                                ? 'Se requiere firma del tecnico'
-                                                : 'Complete el nombre de quien recibe',
+                () {
+                  if (!_isMultiDevice) {
+                    if (_totalCtrl.text.isEmpty) return 'Ingrese el valor del servicio';
+                    if (_paymentMethod == null) return 'Seleccione el metodo de pago';
+                    if (_hasWarranty == null) return 'Seleccione si hay garantia (Si / No)';
+                    if (_hasWarranty == true && _warrantyMonthsCtrl.text.isEmpty) return 'Ingrese los meses de garantia';
+                  } else {
+                    if (_readyEquipments.any((e) => _equipmentValueCtrl[e.id]?.text.isEmpty ?? true)) return 'Ingrese el valor para cada equipo';
+                    if (_readyEquipments.any((e) => _equipmentPaymentMethod[e.id] == null)) return 'Seleccione metodo de pago para cada equipo';
+                    if (_readyEquipments.any((e) => _equipmentHasWarranty[e.id] == null)) return 'Seleccione garantia para cada equipo';
+                    if (_readyEquipments.any((e) => _equipmentHasWarranty[e.id] == true && (_equipmentWarrantyCtrl[e.id]?.text.isEmpty ?? true))) return 'Ingrese los meses de garantia para cada equipo';
+                  }
+                  if (_assignedTechnician == null) return 'Seleccione el tecnico';
+                  if (_requiresClientSignature && _clientSignature == null) return 'Se requiere firma del cliente';
+                  if (_technicianSignature == null) return 'Se requiere firma del tecnico';
+                  return 'Complete el nombre de quien recibe';
+                }(),
                 style: const TextStyle(fontSize: 12, color: AppTheme.accentOrange),
               ),
             ),

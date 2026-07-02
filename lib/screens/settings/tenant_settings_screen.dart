@@ -24,10 +24,12 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
   final _warrantyDaysCtrl = TextEditingController();
   final _warrantyConditionsCtrl = TextEditingController();
   final _legalNoticeCtrl = TextEditingController();
+  final _newPaymentMethodCtrl = TextEditingController();
   bool _loading = true;
   bool _saving = false;
   String? _logoUrl;
   String _selectedTimezone = 'America/Bogota';
+  List<String> _paymentMethods = ['Efectivo', 'Transferencia', 'Tarjeta Credito', 'Tarjeta Debito'];
 
   static const _timezones = [
     ('America/Bogota', 'Colombia (UTC-5)'),
@@ -58,7 +60,19 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
     _warrantyDaysCtrl.dispose();
     _warrantyConditionsCtrl.dispose();
     _legalNoticeCtrl.dispose();
+    _newPaymentMethodCtrl.dispose();
     super.dispose();
+  }
+
+  void _addPaymentMethod() {
+    final name = _newPaymentMethodCtrl.text.trim();
+    if (name.isEmpty) return;
+    if (_paymentMethods.contains(name)) {
+      _newPaymentMethodCtrl.clear();
+      return;
+    }
+    setState(() => _paymentMethods.add(name));
+    _newPaymentMethodCtrl.clear();
   }
 
   Future<void> _loadTenant() async {
@@ -75,6 +89,9 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
       _legalNoticeCtrl.text = data['legalNotice'] ?? '';
       _logoUrl = data['logoUrl'];
       _selectedTimezone = data['timezone'] ?? 'America/Bogota';
+      if (data['paymentMethods'] != null) {
+        _paymentMethods = (data['paymentMethods'] as List).cast<String>();
+      }
     } catch (_) {}
     setState(() => _loading = false);
   }
@@ -93,6 +110,7 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
         'warrantyDays': int.tryParse(_warrantyDaysCtrl.text.trim()) ?? 30,
         'warrantyConditions': _warrantyConditionsCtrl.text.trim(),
         'legalNotice': _legalNoticeCtrl.text.trim(),
+        'paymentMethods': _paymentMethods,
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -317,6 +335,64 @@ class _TenantSettingsScreenState extends State<TenantSettingsScreen> {
                           _fieldMultiline(_warrantyConditionsCtrl,
                               'Condiciones de garantia',
                               'Ej: La garantia no cubre dano por liquidos...'),
+                        ],
+                      ),
+                    ),
+
+                    // Métodos de pago
+                    GlassCard(
+                      borderColor: AppTheme.accentCyan.withValues(alpha: 0.3),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(children: [
+                            Icon(Icons.payments_rounded, color: AppTheme.accentCyan, size: 20),
+                            SizedBox(width: 8),
+                            Text('Metodos de pago',
+                                style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.accentCyan, fontSize: 15)),
+                          ]),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Estos metodos apareceran al momento de entregar un equipo. Cada tenant puede configurar los suyos.',
+                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _paymentMethods.map((m) => Chip(
+                              label: Text(m, style: TextStyle(fontSize: 13)),
+                              deleteIcon: const Icon(Icons.close_rounded, size: 14),
+                              onDeleted: _paymentMethods.length > 1
+                                  ? () => setState(() => _paymentMethods.remove(m))
+                                  : null,
+                            )).toList(),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _newPaymentMethodCtrl,
+                                style: TextStyle(color: AppTheme.textPrimary),
+                                decoration: const InputDecoration(
+                                  labelText: 'Nuevo metodo (ej: ADI, Nequi, Daviplata...)',
+                                  prefixIcon: Icon(Icons.add_rounded),
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                ),
+                                onSubmitted: (_) => _addPaymentMethod(),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              onPressed: _addPaymentMethod,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.accentCyan,
+                                foregroundColor: AppTheme.primaryColor,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              ),
+                              child: const Text('Agregar'),
+                            ),
+                          ]),
                         ],
                       ),
                     ),
