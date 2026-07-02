@@ -1543,6 +1543,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   if (eq.technicianId != null && _getTechName(eq.technicianId).isNotEmpty)
                     _infoRow('Tecnico', _getTechName(eq.technicianId)),
                   _infoRow('Problema', eq.problemReported),
+                  // Unlock credentials
+                  if (eq.unlockPassword != null && eq.unlockPassword!.isNotEmpty)
+                    _infoRow('Contrasena', eq.unlockPassword!),
+                  if (eq.unlockPin != null && eq.unlockPin!.isNotEmpty)
+                    _infoRow('PIN', eq.unlockPin!),
+                  if (eq.unlockPattern != null && eq.unlockPattern!.isNotEmpty)
+                    _patternInfoRow(eq.unlockPattern!),
                   // Diagnosis with individual edit
                   if (eq.diagnosis != null && eq.diagnosis!.isNotEmpty)
                     _editableRow('Diagnostico', eq.diagnosis!, eq.status != 'delivered', () => _editField(eq, 'diagnosis'))
@@ -1983,6 +1990,69 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
+  Widget _patternInfoRow(String pattern) {
+    final nodes = pattern.split('-').map((s) => int.tryParse(s) ?? 0).toList();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text('Patron', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+          CustomPaint(
+            size: const Size(54, 54),
+            painter: _MiniPatternPainter(nodes: nodes),
+          ),
+        ],
+      ),
+    );
+  }
+
+}
+
+class _MiniPatternPainter extends CustomPainter {
+  final List<int> nodes;
+  const _MiniPatternPainter({required this.nodes});
+
+  Offset _center(int node, Size size) {
+    final col = (node - 1) % 3;
+    final row = (node - 1) ~/ 3;
+    final cellW = size.width / 3;
+    final cellH = size.height / 3;
+    return Offset(cellW * col + cellW / 2, cellH * row + cellH / 2);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final linePaint = Paint()
+      ..color = const Color(0xFF4FC3F7).withValues(alpha: 0.7)
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+    final dotPaint = Paint()..color = const Color(0xFF90CAF9);
+    final activePaint = Paint()..color = const Color(0xFF4FC3F7);
+
+    // Draw all 9 nodes as small dots
+    for (int n = 1; n <= 9; n++) {
+      final c = _center(n, size);
+      canvas.drawCircle(c, 3, dotPaint);
+    }
+
+    // Draw lines between selected nodes
+    for (int i = 0; i < nodes.length - 1; i++) {
+      final from = _center(nodes[i], size);
+      final to = _center(nodes[i + 1], size);
+      canvas.drawLine(from, to, linePaint);
+    }
+
+    // Draw selected nodes on top
+    for (final n in nodes) {
+      final c = _center(n, size);
+      canvas.drawCircle(c, 4, activePaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_MiniPatternPainter old) => old.nodes != nodes;
 }
 
 /// Pantalla de previsualización del acta de entrega con opciones de imprimir/compartir.

@@ -91,15 +91,33 @@ class OrderService {
       }).toList();
     }
 
-    // Try creating - if backend rejects 'equipments', retry without it
     dynamic response;
     try {
       response = await _api.dio.post('/orders', data: data);
     } catch (e) {
       if (data.containsKey('equipments')) {
-        debugPrint('Backend rejected equipments field, retrying without...');
-        data.remove('equipments');
-        response = await _api.dio.post('/orders', data: data);
+        // First retry: keep equipments array but strip unlock fields from each item
+        // (old backend may not have unlockPattern in EquipmentDto yet)
+        debugPrint('Backend rejected request, retrying without unlock fields...');
+        final stripped = (data['equipments'] as List).map((item) {
+          final m = Map<String, dynamic>.from(item as Map<String, dynamic>);
+          m.remove('unlockPassword');
+          m.remove('unlockPin');
+          m.remove('unlockPattern');
+          return m;
+        }).toList();
+        data['equipments'] = stripped;
+        data.remove('unlockPassword');
+        data.remove('unlockPin');
+        data.remove('unlockPattern');
+        try {
+          response = await _api.dio.post('/orders', data: data);
+        } catch (e2) {
+          // Second retry: backend doesn't support equipments array at all — send single device
+          debugPrint('Backend rejected equipments array, retrying as single device...');
+          data.remove('equipments');
+          response = await _api.dio.post('/orders', data: data);
+        }
       } else {
         rethrow;
       }

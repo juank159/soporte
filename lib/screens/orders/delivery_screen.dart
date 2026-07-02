@@ -2,10 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:dio/dio.dart' as dio;
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
-import 'package:pdf/pdf.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../config/format_utils.dart';
 import '../../models/service_order.dart';
@@ -237,15 +236,19 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
           } catch (_) {}
         }
       } else {
-        final warrantyMonths = int.tryParse(_warrantyMonthsCtrl.text.trim()) ?? 1;
-        final warrantyDays = _hasWarranty == true ? warrantyMonths * 30 : 0;
-        final warrantyLabel = _hasWarranty == true ? '$warrantyMonths mes(es)' : 'Sin garantia';
+        final singleWarrantyMonths = int.tryParse(_warrantyMonthsCtrl.text.trim()) ?? 1;
+        final singleWarrantyDays = _hasWarranty == true ? singleWarrantyMonths * 30 : 0;
+        final singleWarrantyLabel = _hasWarranty == true ? '$singleWarrantyMonths mes(es)' : 'Sin garantia';
         final deliveryNote =
-            'Entregado por \$${_totalCtrl.text.trim()} - ${_paymentMethod!} - Garantia: $warrantyLabel';
+            'Entregado por \$${_totalCtrl.text.trim()} - ${_paymentMethod!} - Garantia: $singleWarrantyLabel';
         try {
           await _api.dio.patch('/orders/${widget.order.id}/status', data: {
             'status': 'delivered',
             'notes': deliveryNote,
+          });
+          // Update single-device warranty on order
+          await _api.dio.patch('/orders/${widget.order.id}/delivery-info', data: {
+            'warrantyDays': singleWarrantyDays,
           });
         } catch (_) {}
       }
@@ -267,7 +270,10 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
           .where((eq) => deliveredIds.contains(eq.id))
           .toList();
 
-      final warrantyDaysForPdf = _hasWarranty == true ? warrantyMonths * 30 : 0;
+      final singleWarrantyMonthsFinal = _isMultiDevice ? 0 : (int.tryParse(_warrantyMonthsCtrl.text.trim()) ?? 1);
+      final warrantyDaysForPdf = _isMultiDevice
+          ? widget.order.warrantyDays
+          : (_hasWarranty == true ? singleWarrantyMonthsFinal * 30 : 0);
       final orderForPdf = ServiceOrder(
         id: widget.order.id,
         orderNumber: widget.order.orderNumber,
@@ -557,7 +563,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(eq.summary,
-                                style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
+                                style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
                           ),
                         ]),
                         const SizedBox(height: 10),
